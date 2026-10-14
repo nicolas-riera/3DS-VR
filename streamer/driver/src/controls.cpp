@@ -95,10 +95,12 @@ void Controls::Update(const Vr3dsGamepad& pad, bool connected) {
 	std::lock_guard<std::mutex> lock(m_mutex);
 	uint32_t id = m_id;
 	if (id == k_unTrackedDeviceIndexInvalid) return;
-	if (connected != m_connected) {
+	bool changed = connected != m_connected;
+	if (changed) {
 		m_connected = connected;
 		VRServerDriverHost()->TrackedDevicePoseUpdated(id, Pose(connected), sizeof(DriverPose_t));
 	}
+	if (!connected && !changed) return; // already released
 	Vr3dsGamepad p = pad;
 	if (!connected) memset(&p, 0, sizeof(p)); // release everything
 	IVRDriverInput* in = VRDriverInput();

@@ -382,6 +382,8 @@ static bool IpcPoll() {
 
 // ---------------------------------------------------------------- drawing
 
+static const wchar_t kSep[] = L"  \u00B7  "; // between the items of a status line
+
 static const Color kBg(255, 15, 17, 27);
 static const Color kCard(255, 27, 31, 48);
 static const Color kCardHi(255, 37, 43, 66);
@@ -479,7 +481,7 @@ static void Paint(HDC hdc, const RECT& rc) {
 	FillRound(g, kCard, card, S(10));
 	if (DriverAlive() && g_status.pairPending) {
 		Text(g, L"New console", 32, 88, 12, kAccent, true);
-		Text(g, Widen(g_status.pairName, 32) + L"  ·  " + ModelName(g_status.pairModel), 32, 106, 15, kText, true, 260);
+		Text(g, Widen(g_status.pairName, 32) + kSep + ModelName(g_status.pairModel), 32, 106, 15, kText, true, 260);
 		Text(g, L"Pair it if the console shows the same code.", 32, 132, 12, kDim, false, 270);
 		wchar_t code[8];
 		swprintf(code, 8, L"%04u", g_status.pairCode);
@@ -491,11 +493,11 @@ static void Paint(HDC hdc, const RECT& rc) {
 		Text(g, ModelName(s.model), 32, 88, 12, kAccent, true);
 		Text(g, Widen(s.consoleName, 32), 32, 104, 17, kText, true, 260);
 		wchar_t line[200];
-		swprintf(line, 200, L"%s  ·  %ux%u per eye  ·  %s  ·  %u fps", s.stereo ? L"3D" : L"2D",
-				 s.eyeWidth, s.eyeHeight, s.codec == VR3DS_CODEC_H264 ? L"H.264" : L"JPEG", s.fps);
+		swprintf(line, 200, L"%s%s%ux%u per eye%s%s%s%u fps", s.stereo ? L"3D" : L"2D", kSep, s.eyeWidth,
+				 s.eyeHeight, kSep, s.codec == VR3DS_CODEC_H264 ? L"H.264" : L"JPEG", kSep, s.fps);
 		Text(g, line, 32, 134, 12, kDim, false, 420);
-		swprintf(line, 200, L"%.0f fps sent  ·  %.1f Mbps  ·  latency %.0f ms  ·  %s", s.encodeFps,
-				 s.sentMbps, s.latencyMs, Widen(s.consoleIp, 16).c_str());
+		swprintf(line, 200, L"%.0f fps sent%s%.1f Mbps%slatency %.0f ms%s%s", s.encodeFps, kSep, s.sentMbps, kSep,
+				 s.latencyMs, kSep, Widen(s.consoleIp, 16).c_str());
 		Text(g, line, 32, 154, 12, kDim, false, 420);
 		Text(g, Widen(s.encoder, 48), 32, 174, 11, Color(255, 100, 108, 135), false, 420);
 		wchar_t batt[32];

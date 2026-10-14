@@ -13,5 +13,10 @@
 			"touch": false
 		}
 	},
-	"default_bindings": []
+	"default_bindings": [
+		{
+			"app_key": "openvr.component.vrcompositor",
+			"binding_url": "3dsvr_hmd_vrcompositor.json"
+		}
+	]
 }

@@ -42,7 +42,12 @@ public:
 		Controls* controls = m_controls.get();
 		if (!m_streamer->Start(
 				m_compositor.get(), [hmd](const Quat& q) { hmd->OnTracking(q); },
-				[controls](const Vr3dsGamepad& pad, bool connected) { controls->Update(pad, connected); }))
+				[hmd, controls](const Vr3dsGamepad& pad, bool connected, bool dashboard) {
+					hmd->SetSystemButton(connected && (pad.buttons & VR3DS_BTN_GUIDE));
+					// only there while the dashboard is open: games (VRChat) would see a tracker
+					// and get every button twice, from it and from the Xbox controller
+					controls->Update(pad, connected && dashboard);
+				}))
 			return Fail("Network unavailable");
 		if (!VRServerDriverHost()->TrackedDeviceAdded("3DSVR-HMD", TrackedDeviceClass_HMD, m_hmd.get()))
 			return Fail("SteamVR refused the headset");
@@ -62,8 +67,11 @@ public:
 		VREvent_t e;
 		while (VRServerDriverHost()->PollNextEvent(&e, sizeof(e))) {
 			if (!m_streamer) continue;
-			if (e.eventType == VREvent_DashboardActivated) m_streamer->SetDashboardOpen(true);
-			else if (e.eventType == VREvent_DashboardDeactivated) m_streamer->SetDashboardOpen(false);
+			if (e.eventType == VREvent_DashboardActivated || e.eventType == VREvent_DashboardDeactivated) {
+				bool open = e.eventType == VREvent_DashboardActivated;
+				Log("SteamVR dashboard %s", open ? "opened" : "closed");
+				m_streamer->SetDashboardOpen(open);
+			}
 		}
 	}
 	bool ShouldBlockStandbyMode() override { return false; }

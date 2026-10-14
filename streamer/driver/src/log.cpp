@@ -29,6 +29,9 @@ void LogInit() {
 	std::lock_guard<std::mutex> lock(g_logMutex);
 	if (g_logFile) return;
 	std::wstring path = AppDataDir() + L"\\driver.log";
+	// keep the last session's log: it explains what went wrong before a restart
+	std::wstring previous = path.substr(0, path.size() - 4) + L".previous.log";
+	MoveFileExW(path.c_str(), previous.c_str(), MOVEFILE_REPLACE_EXISTING);
 	g_logFile = _wfopen(path.c_str(), L"w");
 }
 

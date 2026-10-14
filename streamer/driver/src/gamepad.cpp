@@ -28,7 +28,14 @@ bool Gamepad::ConnectPadDriver() {
 	if (h == INVALID_HANDLE_VALUE) return false;
 	Vr3dsPadReport idle = {};
 	DWORD n;
-	if (!DeviceIoControl(h, IOCTL_VR3DS_PAD_SET_STATE, &idle, sizeof(idle), nullptr, 0, &n, nullptr)) {
+	// The previous handle may still be closing (a session that just ended):
+	// the driver stays busy with it for a moment.
+	bool plugged = false;
+	for (int i = 0; i < 20 && !plugged; i++) {
+		plugged = DeviceIoControl(h, IOCTL_VR3DS_PAD_SET_STATE, &idle, sizeof(idle), nullptr, 0, &n, nullptr) != 0;
+		if (!plugged) Sleep(50);
+	}
+	if (!plugged) {
 		Log("3DS VR gamepad driver: could not plug the controller in (error %lu)", GetLastError());
 		CloseHandle(h);
 		return false;
@@ -61,6 +68,8 @@ uint8_t Gamepad::ConnectVigem() {
 }
 
 uint8_t Gamepad::Connect() {
+	m_wanted = true;
+	m_retryAt = GetTickCount64() + 2000;
 	if (m_pad || m_target) return m_status;
 	m_hasLast = false;
 	if (ConnectPadDriver()) {
@@ -73,6 +82,7 @@ uint8_t Gamepad::Connect() {
 }
 
 void Gamepad::Disconnect() {
+	m_wanted = false;
 	if (m_pad) {
 		CloseHandle(m_pad); // unplugs it
 		m_pad = nullptr;
@@ -93,7 +103,10 @@ void Gamepad::Disconnect() {
 
 // Rumble is not read back: the 3DS has no motor.
 void Gamepad::Update(const Vr3dsGamepad& pad) {
-	if (!m_pad && !m_target) return;
+	if (!m_pad && !m_target) {
+		// lost during the session: try again now and then (with no driver at all, don't)
+		if (!m_wanted || m_status != IPC_PAD_ERROR || GetTickCount64() < m_retryAt || Connect() != IPC_PAD_OK) return;
+	}
 	if (m_hasLast && memcmp(&pad, &m_last, sizeof(pad)) == 0) return;
 	m_last = pad;
 	m_hasLast = true;

@@ -7,14 +7,14 @@
 
 #include "vr3ds_protocol.h"
 
-// The console's buttons as a SteamVR gamepad (controller type "gamepad").
-// SteamVR knows how to drive its dashboard with one: aim with the head, A or
-// ZR to click, B to go back, Guide to open it. Games that read SteamVR input
-// can bind it too; the others use the virtual Xbox controller.
+// The console's buttons as a SteamVR gamepad (controller type "gamepad"),
+// connected only while SteamVR's dashboard is open: SteamVR knows how to drive
+// its dashboard with one (aim with the head, A or ZR to click, B to go back).
+// Games use the virtual Xbox controller.
 class Controls : public vr::ITrackedDeviceServerDriver {
 public:
 	// From the network thread, for every TRACKING packet; connected = false
-	// when the session ends.
+	// when the session ends or the dashboard is closed.
 	void Update(const Vr3dsGamepad& pad, bool connected);
 
 	vr::EVRInitError Activate(uint32_t unObjectId) override;

@@ -21,6 +21,8 @@ public:
 	Hmd(Compositor* compositor, Streamer* streamer) : m_compositor(compositor), m_streamer(streamer) {}
 
 	void OnTracking(const Quat& q);
+	// The headset's system button (Guide on the console): toggles SteamVR's dashboard.
+	void SetSystemButton(bool down);
 	void Stop();
 
 	// ITrackedDeviceServerDriver
@@ -62,6 +64,7 @@ private:
 	Streamer* m_streamer;
 	std::atomic<uint32_t> m_id{vr::k_unTrackedDeviceIndexInvalid};
 	vr::PropertyContainerHandle_t m_props = vr::k_ulInvalidPropertyContainer;
+	vr::VRInputComponentHandle_t m_systemButton = vr::k_ulInvalidInputComponentHandle;
 
 	std::mutex m_poseMutex;
 	vr::DriverPose_t m_pose{};

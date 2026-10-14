@@ -1,0 +1,35 @@
+{
+	"action_manifest_version": 0,
+	"alias_info": {},
+	"app_key": "openvr.component.vrcompositor",
+	"controller_type": "3dsvr_hmd",
+	"category": "steamvr_input",
+	"description": "3DS VR: the dashboard pointer follows the head, Guide (touch screen) toggles the dashboard",
+	"name": "3DS VR headset",
+	"options": {},
+	"simulated_actions": [],
+	"bindings": {
+		"/actions/lasermouse": {
+			"poses": [
+				{
+					"output": "/actions/lasermouse/in/pointer",
+					"path": "/user/head/pose/raw"
+				}
+			],
+			"sources": []
+		},
+		"/actions/system": {
+			"sources": [
+				{
+					"path": "/user/head/input/system",
+					"mode": "button",
+					"inputs": {
+						"click": {
+							"output": "/actions/system/in/ToggleDashboard"
+						}
+					}
+				}
+			]
+		}
+	}
+}

@@ -82,6 +82,7 @@ EVRInitError Hmd::Activate(uint32_t unObjectId) {
 	p->SetUint64Property(m_props, Prop_CurrentUniverseId_Uint64, kUniverseId);
 	p->SetStringProperty(m_props, Prop_DriverProvidedChaperoneJson_String, ChaperoneJson(m_eyeHeight).c_str());
 	p->SetBoolProperty(m_props, Prop_DriverProvidedChaperoneVisibility_Bool, false);
+	VRDriverInput()->CreateBooleanComponent(m_props, "/input/system/click", &m_systemButton);
 
 	{
 		std::lock_guard<std::mutex> lock(m_poseMutex);
@@ -160,6 +161,11 @@ void Hmd::OnTracking(const Quat& q) {
 }
 
 // ----------------------------------------------------- session -> SteamVR
+
+void Hmd::SetSystemButton(bool down) {
+	if (m_systemButton != k_ulInvalidInputComponentHandle)
+		VRDriverInput()->UpdateBooleanComponent(m_systemButton, down, 0);
+}
 
 void Hmd::SetModelProperties(uint8_t model) {
 	bool known = model < VR3DS_MODEL_COUNT;

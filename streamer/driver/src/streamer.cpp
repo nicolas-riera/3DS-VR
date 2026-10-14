@@ -279,7 +279,8 @@ void Streamer::EndSession(const char* reason) {
 	Log("Session ended: %s", reason);
 	m_audio.Stop();
 	m_gamepad.Disconnect();
-	if (m_onPad) m_onPad(Vr3dsGamepad{}, false);
+	m_dashboardOpen = false;
+	if (m_onPad) m_onPad(Vr3dsGamepad{}, false, false);
 }
 
 void Streamer::OnHello(const Vr3dsHello& h, const sockaddr_in& from) {
@@ -364,7 +365,14 @@ void Streamer::OnPacket(const uint8_t* data, int len, const sockaddr_in& from) {
 			if (m_poses.size() > 128) m_poses.pop_front();
 		}
 		if (m_onPose) m_onPose(q);
-		if (m_onPad) m_onPad(t->pad, true);
+		{
+			// Guide toggles the dashboard. The dashboard events confirm it,
+			// this just does not wait for them.
+			bool guide = (t->pad.buttons & VR3DS_BTN_GUIDE) != 0;
+			if (guide && !m_guideDown) m_dashboardOpen = !m_dashboardOpen;
+			m_guideDown = guide;
+		}
+		if (m_onPad) m_onPad(t->pad, true, m_dashboardOpen);
 		{
 			// Guide opens SteamVR's dashboard (on Windows the Xbox button opens the Game Bar)
 			Vr3dsGamepad xpad = t->pad;

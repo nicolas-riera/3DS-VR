@@ -24,4 +24,6 @@ private:
 	Vr3dsGamepad m_last{};
 	bool m_hasLast = false;
 	uint8_t m_status = 0;
+	bool m_wanted = false;  // between Connect() and Disconnect()
+	uint64_t m_retryAt = 0; // GetTickCount64() of the next attempt
 };

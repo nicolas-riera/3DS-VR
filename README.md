@@ -102,8 +102,8 @@ you opened the app, click **Restart SteamVR**.
 | SELECT + START, or touch screen: Recenter | recenter the view (not sent to the game) |
 
 **In SteamVR's dashboard** the pointer follows your head. A or ZR clicks, ZL right-clicks, B goes back, the D-Pad
-moves between items and the C-Stick (or the touch-screen stick) scrolls. Holding SELECT also opens the dashboard.
-While it is open, the game gets no input from the console.
+moves between items and the C-Stick (or the touch-screen stick) scrolls. While it is open, the game gets no input
+from the console.
 
 ### Console settings
 
@@ -139,9 +139,11 @@ Settings are saved in `sdmc:/3ds/3DS-VR/settings.ini`.
 - **Audio.** The default output device is captured with WASAPI loopback, resampled to 32 kHz and encoded to
   IMA-ADPCM (256 kbit/s).
 - **Gamepad.** A virtual Xbox 360 controller is plugged in while a console is connected, through the 3DS VR
-  gamepad driver (below), or through ViGEmBus when only that is installed. The SteamVR driver also adds the
-  console's buttons as a SteamVR device of the `gamepad` type, which SteamVR's dashboard knows how to use: it aims
-  with the head. Its bindings are in `resources/input/`.
+  gamepad driver (below), or through ViGEmBus when only that is installed. Guide is the headset's system button,
+  which toggles SteamVR's dashboard. While the dashboard is open, the SteamVR driver also connects the console's
+  buttons as a SteamVR device of the `gamepad` type, which the dashboard knows how to use (it aims with the head).
+  The rest of the time that device is disconnected, so games do not take it for a tracker or get every button
+  twice. The bindings are in `resources/input/`.
 - **Model and battery.** The console's model becomes the headset's model number, which selects that console's
   render model and status icons. The icons follow SteamVR's own style (see `driver.vrresources`). The battery
   level is reported as the headset's battery.
