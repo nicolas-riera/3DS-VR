@@ -8,6 +8,7 @@ typedef struct {
 	u8 model;        /* Vr3dsModel / CFG_SystemModel */
 	bool isNew;      /* New 3DS family: hardware H.264 decoder, C-Stick, ZL/ZR */
 	bool has3D;      /* not a 2DS / New 2DS XL */
+	bool hwH264;     /* MVD started (set by video_init) */
 	u64 consoleId;   /* random, generated on first launch */
 	u64 token;       /* pairing secret, generated on first launch */
 	char name[32];   /* console owner nickname */

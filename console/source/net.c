@@ -54,6 +54,8 @@ static u32 s_rxBytes;
 static u64 s_rxWindow;
 static u32 s_settingsSeq;
 static u32 s_bcast;
+static u32 s_leftSession;  /* session we just left: its CONFIG resends must not pull us back */
+static u64 s_leftAt;
 static aptHookCookie s_hook;
 static u8 s_rx[2048];
 
@@ -215,7 +217,7 @@ static void send_hello(void) {
 	h.consoleId = g_console.consoleId;
 	h.token = g_console.token;
 	h.model = g_console.model;
-	h.caps = (g_console.isNew ? VR3DS_CAP_HW_H264 : 0) | (g_console.has3D ? VR3DS_CAP_STEREO : 0);
+	h.caps = (g_console.hwH264 ? VR3DS_CAP_HW_H264 : 0) | (g_console.has3D ? VR3DS_CAP_STEREO : 0);
 	h.appVersion[0] = APP_VERSION_MAJOR;
 	h.appVersion[1] = APP_VERSION_MINOR;
 	h.appVersion[2] = APP_VERSION_MICRO;
@@ -248,7 +250,7 @@ static void send_settings(void) {
 static void send_bye(void) {
 	Vr3dsHeader h;
 	vr3ds_header(&h, VR3DS_PKT_BYE);
-	send_to_pc(&h, sizeof(h));
+	for (int i = 0; i < 3; i++) send_to_pc(&h, sizeof(h)); /* datagrams get lost */
 }
 
 void net_send_tracking(Vr3dsTracking* t) {
@@ -325,7 +327,8 @@ static void on_packet(const u8* data, int len, const struct sockaddr_in* from) {
 			break;
 		LightLock_Lock(&s_lock);
 		/* while streaming, only the current PC may change the session */
-		if (st != NET_STREAMING || fromPc) {
+		bool leftRecently = c->sessionId == s_leftSession && now - s_leftAt < 5000;
+		if ((st != NET_STREAMING || fromPc) && !leftRecently) {
 			bool newSession = st != NET_STREAMING || c->sessionId != s_st.sessionId;
 			if (newSession) {
 				set_state_locked(NET_SEARCHING);
@@ -426,7 +429,11 @@ static void tick(u64 now) {
 
 	if (s_disconnectReq) {
 		s_disconnectReq = false;
-		if (s_st.state == NET_STREAMING) send_bye();
+		if (s_st.state == NET_STREAMING) {
+			send_bye();
+			s_leftSession = s_st.sessionId;
+			s_leftAt = now;
+		}
 		LightLock_Lock(&s_lock);
 		set_state_locked(NET_SEARCHING);
 		LightLock_Unlock(&s_lock);

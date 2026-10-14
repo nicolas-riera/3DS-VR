@@ -25,6 +25,8 @@ using std::min;
 } // namespace Gdiplus
 #include <gdiplus.h>
 
+#include <ViGEm/Client.h>
+
 #include "ipc.h"
 #include "resource.h"
 #include "vr3ds_protocol.h"
@@ -225,13 +227,14 @@ static bool CheckFirewall() {
 	return RunHidden(SystemExe(L"netsh.exe"), L"advfirewall firewall show rule name=\"3DS VR\"") == 0;
 }
 
+// Connects to the bus like the driver does: ViGEmBus can be installed under
+// other names (Virtual Desktop ships it as "Virtual Desktop Gamepad Emulation Bus").
 static bool CheckVigem() {
-	SC_HANDLE scm = OpenSCManagerW(nullptr, nullptr, SC_MANAGER_CONNECT);
-	if (!scm) return false;
-	SC_HANDLE svc = OpenServiceW(scm, L"ViGEmBus", SERVICE_QUERY_STATUS);
-	bool ok = svc != nullptr;
-	if (svc) CloseServiceHandle(svc);
-	CloseServiceHandle(scm);
+	PVIGEM_CLIENT client = vigem_alloc();
+	if (!client) return false;
+	bool ok = VIGEM_SUCCESS(vigem_connect(client));
+	if (ok) vigem_disconnect(client);
+	vigem_free(client);
 	return ok;
 }
 

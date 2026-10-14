@@ -266,7 +266,7 @@ private:
 	}
 
 	// Pulls one output sample. S_OK with data, MF_E_TRANSFORM_NEED_MORE_INPUT, or an error.
-	HRESULT PullOutput(EncodedFrame& out) {
+	HRESULT PullOutput(EncodedFrame& out, LONGLONG* sampleTime = nullptr) {
 		for (int attempt = 0; attempt < 3; attempt++) {
 			MFT_OUTPUT_DATA_BUFFER ob = {};
 			ob.dwStreamID = m_outId;
@@ -307,6 +307,7 @@ private:
 				cb->Release();
 				UINT32 clean = 0;
 				if (SUCCEEDED(s->GetUINT32(MFSampleExtension_CleanPoint, &clean)) && clean) out.key = true;
+				if (sampleTime && FAILED(s->GetSampleTime(sampleTime))) *sampleTime = -1;
 			}
 			if (s && s != own) s->Release();
 			SafeRelease(own);
@@ -350,14 +351,26 @@ private:
 		}
 	}
 
+	// After a timeout the MFT may still hold frames we gave up on: start clean.
+	void Flush() {
+		m_mft->ProcessMessage(MFT_MESSAGE_COMMAND_FLUSH, 0);
+		m_credits = 0;
+		while (NextEvent(0) != 0) {
+		}
+	}
+
 	bool EncodeAsync(IMFSample* sample, EncodedFrame& out) {
+		LONGLONG want = 0;
+		sample->GetSampleTime(&want);
 		while (m_credits == 0) {
 			MediaEventType t = NextEvent(100);
 			if (t == METransformNeedInput) m_credits++;
 			else if (t == METransformHaveOutput) {
+				// output of an input we already gave up on (the caller forced a key frame since)
 				EncodedFrame stale;
-				PullOutput(stale); // a late frame: dropped, the next one follows
+				PullOutput(stale);
 			} else if (t == 0) {
+				Flush();
 				return false;
 			}
 		}
@@ -365,9 +378,20 @@ private:
 		m_credits--;
 		while (true) {
 			MediaEventType t = NextEvent(60);
-			if (t == METransformNeedInput) m_credits++;
-			else if (t == METransformHaveOutput) return PullOutput(out) == S_OK;
-			else if (t == 0) return false;
+			if (t == METransformNeedInput) {
+				m_credits++;
+			} else if (t == METransformHaveOutput) {
+				EncodedFrame got;
+				LONGLONG time = -1;
+				if (PullOutput(got, &time) != S_OK) return false;
+				// only the output of this input is this frame; older ones were given up on
+				if (time >= 0 && time < want) continue;
+				out = std::move(got);
+				return true;
+			} else if (t == 0) {
+				Flush();
+				return false;
+			}
 		}
 	}
 

@@ -215,7 +215,7 @@ void Streamer::BuildConfigLocked() {
 	c.configId = m_nextConfigId++;
 	if (m_nextConfigId == 0) m_nextConfigId = 1;
 	m_s.config = c;
-	m_forceKey = true;
+	m_keyRequests++;
 	SendConfigLocked();
 	Log("Stream: %s %s %ux%u per eye, %u fps, %u kbps, FOV %.0f x %.0f deg (with margin)",
 		c.codec == VR3DS_CODEC_H264 ? "H.264" : "JPEG", c.stereo ? "3D" : "2D", c.eyeWidth, c.eyeHeight, c.fps,
@@ -261,7 +261,7 @@ void Streamer::EndSession(const char* reason) {
 		if (!m_s.active) return;
 		Vr3dsHeader bye;
 		vr3ds_header(&bye, VR3DS_PKT_BYE);
-		SendTo(&bye, sizeof(bye), m_s.addr);
+		for (int i = 0; i < 3; i++) SendTo(&bye, sizeof(bye), m_s.addr); // datagrams get lost
 		m_s.active = false;
 		m_viewVersion++;
 	}
@@ -273,17 +273,24 @@ void Streamer::EndSession(const char* reason) {
 void Streamer::OnHello(const Vr3dsHello& h, const sockaddr_in& from) {
 	uint64_t now = NowUs();
 	bool paired = m_pairing.IsPaired(h.consoleId, h.token);
+	bool endOld = false;
 	{
 		std::lock_guard<std::mutex> lock(m_mutex);
 		if (m_s.active) {
-			// the console is searching again (it lost us): send it the stream again
-			if (m_s.consoleId == h.consoleId && paired) {
+			if (m_s.consoleId != h.consoleId) return; // one console at a time
+			if (paired) {
+				// the console is searching again (it lost us): send it the stream again
 				m_s.addr = from;
 				m_s.lastRxUs = now;
 				SendConfigLocked();
+				return;
 			}
-			return; // one console at a time
+			endOld = true; // it reset its pairing ("Forget PCs"): stop, then treat it as new
 		}
+	}
+	if (endOld) EndSession("the console forgot this PC");
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
 		if (!paired) {
 			auto rej = m_rejectedUntil.find(h.consoleId);
 			if (rej != m_rejectedUntil.end() && rej->second > now) {
@@ -335,9 +342,9 @@ void Streamer::OnPacket(const uint8_t* data, int len, const sockaddr_in& from) {
 			m_s.battery = t->battery;
 			m_s.batteryFlags = t->batteryFlags;
 			m_s.stereoStrength = t->stereoStrength;
-			if (t->shownFrameTs && t->shownFrameTs <= now) {
-				m_s.shownFrameTs = t->shownFrameTs;
-				m_s.shownFrameAgeUs = t->shownFrameAgeUs;
+			if (t->shownFrameTs && t->shownFrameTs + t->shownFrameAgeUs <= now) {
+				float ms = (now - t->shownFrameTs - t->shownFrameAgeUs) / 1000.0f;
+				m_s.latencyMs = m_s.latencyMs > 0 ? m_s.latencyMs * 0.9f + ms * 0.1f : ms;
 			}
 			m_s.framesDecoded = t->framesDecoded;
 			m_s.framesDropped = t->framesDropped;
@@ -366,7 +373,7 @@ void Streamer::OnPacket(const uint8_t* data, int len, const sockaddr_in& from) {
 		if (len < (int)sizeof(Vr3dsKeyframeRequest)) break;
 		const Vr3dsKeyframeRequest* r = (const Vr3dsKeyframeRequest*)data;
 		std::lock_guard<std::mutex> lock(m_mutex);
-		if (m_s.active && SameHost(from, m_s.addr) && r->configId == m_s.config.configId) m_forceKey = true;
+		if (m_s.active && SameHost(from, m_s.addr) && r->configId == m_s.config.configId) m_keyRequests++;
 		break;
 	}
 
@@ -439,9 +446,7 @@ void Streamer::SendStatus() {
 			st.framesDropped = m_s.framesDropped;
 			CopyName(st.consoleName, sizeof(st.consoleName), m_s.name);
 			CopyName(st.consoleIp, sizeof(st.consoleIp), AddrStr(m_s.addr));
-			uint64_t now = NowUs();
-			if (m_s.shownFrameTs && now > m_s.shownFrameTs && now - m_s.shownFrameTs < 2000000)
-				st.latencyMs = (float)(now - m_s.shownFrameTs) / 1000.0f;
+			st.latencyMs = m_s.latencyMs;
 		}
 		st.pairPending = m_pending.active ? 1 : 0;
 		if (m_pending.active) {
@@ -598,6 +603,7 @@ void Streamer::EncodeThread() {
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
 	uint32_t frameId = 0;
 	uint16_t lastConfig = 0;
+	uint32_t keysServed = 0;
 	uint64_t lastSentUs = 0;
 
 	while (m_running) {
@@ -613,11 +619,13 @@ void Streamer::EncodeThread() {
 		Vr3dsConfig cfg;
 		sockaddr_in to;
 		bool active;
+		uint32_t keyRequests;
 		{
 			std::lock_guard<std::mutex> lock(m_mutex);
 			active = m_s.active;
 			cfg = m_s.config;
 			to = m_s.addr;
+			keyRequests = m_keyRequests;
 		}
 		if (!active || cfg.configId == 0 || slot.format.configId != cfg.configId) {
 			m_compositor->Release(slot);
@@ -652,19 +660,14 @@ void Streamer::EncodeThread() {
 			m_encKbps = cfg.bitrateKbps;
 			std::lock_guard<std::mutex> lock(m_mutex);
 			m_encoderName = m_encoder->Name();
-			m_forceKey = true;
+			keysServed = keyRequests - 1; // a new encoder starts with a key frame
 		}
 		if (cfg.configId != lastConfig) {
 			lastConfig = cfg.configId;
 			frameId = 0;
+			keysServed = keyRequests - 1; // every config starts with a key frame
 		}
-
-		bool forceKey;
-		{
-			std::lock_guard<std::mutex> lock(m_mutex);
-			forceKey = m_forceKey;
-			m_forceKey = false;
-		}
+		bool forceKey = keysServed != keyRequests;
 
 		const uint8_t* px = nullptr;
 		uint32_t pitch = 0;
@@ -679,10 +682,10 @@ void Streamer::EncodeThread() {
 		// every encoded frame takes an id, sent or not, so the console sees gaps
 		uint32_t id = frameId++;
 		if (!ok || ef.data.size() > VR3DS_MAX_FRAME) {
-			std::lock_guard<std::mutex> lock(m_mutex);
-			m_forceKey = true;
+			keysServed = keyRequests - 1; // the console will miss a reference: next one is a key frame
 			continue;
 		}
+		if (ef.key) keysServed = keyRequests;
 		slot.pose = ResolveFramePose(slot.pose, slot.timestampUs);
 		SendFrame(ef, slot, cfg.configId, id, to, cfg.bitrateKbps);
 		lastSentUs = now;

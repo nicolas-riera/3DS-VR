@@ -62,8 +62,8 @@ private:
 		uint8_t battery = 100, batteryFlags = 0;
 		uint64_t lastRxUs = 0, lastConfigSentUs = 0;
 		// stats echoed by the console
-		uint64_t shownFrameTs = 0;
-		uint32_t shownFrameAgeUs = 0, framesDecoded = 0, framesDropped = 0;
+		float latencyMs = 0; // PC capture -> console reception, plus the trip back of the TRACKING packet
+		uint32_t framesDecoded = 0, framesDropped = 0;
 	};
 	struct PendingPair {
 		bool active = false;
@@ -107,7 +107,7 @@ private:
 	std::map<uint64_t, uint64_t> m_rejectedUntil;
 	uint16_t m_nextConfigId = 1;
 	uint32_t m_viewVersion = 1;
-	bool m_forceKey = true;
+	uint32_t m_keyRequests = 1; // incremented on each key frame request; the encoder serves them in order
 	std::deque<PoseSample> m_poses;
 	PairingStore m_pairing;
 

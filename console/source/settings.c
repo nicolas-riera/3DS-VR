@@ -27,7 +27,7 @@ int settings_bitrate_kbps(void) {
 	int q = g_settings.quality;
 	if (q < 0) q = 0;
 	if (q >= QUALITY_COUNT) q = QUALITY_COUNT - 1;
-	return g_console.isNew ? s_bitrateNew[q] : s_bitrateOld[q];
+	return g_console.hwH264 ? s_bitrateNew[q] : s_bitrateOld[q];
 }
 
 const int* settings_fps_choices(void) {
@@ -103,10 +103,17 @@ void settings_screen_tangents(float* tanX, float* tanY) {
 }
 
 void settings_stream(Vr3dsStreamSettings* out) {
-	memset(out, 0, sizeof(*out));
-	out->stereo = s_stereoActive ? 1 : 0;
-	out->fps = (uint8_t)g_settings.fps;
-	out->bitrateKbps = (uint16_t)settings_bitrate_kbps();
-	settings_screen_tangents(&out->tanX, &out->tanY);
-	out->heightCm = (uint16_t)g_settings.heightCm;
+	/* `out` is packed (often unaligned): fill a local copy, never take the
+	   address of one of its float fields */
+	Vr3dsStreamSettings s;
+	memset(&s, 0, sizeof(s));
+	float tanX, tanY;
+	settings_screen_tangents(&tanX, &tanY);
+	s.stereo = s_stereoActive ? 1 : 0;
+	s.fps = (uint8_t)g_settings.fps;
+	s.bitrateKbps = (uint16_t)settings_bitrate_kbps();
+	s.tanX = tanX;
+	s.tanY = tanY;
+	s.heightCm = (uint16_t)g_settings.heightCm;
+	memcpy(out, &s, sizeof(s));
 }

@@ -78,7 +78,7 @@ add_executable(app WIN32
 	app/app.rc
 )
 target_include_directories(app PRIVATE "${CMAKE_SOURCE_DIR}/common" "${CMAKE_SOURCE_DIR}/../protocol")
-target_link_libraries(app PRIVATE ws2_32 shell32 advapi32 urlmon dwmapi gdi32 gdiplus)
+target_link_libraries(app PRIVATE ViGEmClient setupapi ws2_32 shell32 advapi32 urlmon dwmapi gdi32 gdiplus)
 target_link_options(app PRIVATE /MANIFEST:NO)
 target_compile_options(app PRIVATE /W3 /permissive-)
 set_target_properties(app PROPERTIES

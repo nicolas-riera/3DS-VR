@@ -45,17 +45,22 @@ static u32 s_decCount;
 
 /* --------------------------------------------------------------- H.264 */
 
+static bool mvd_start(void) {
+	if (s_mvdReady) return true;
+	if (R_FAILED(mvdstdInit(MVDMODE_VIDEOPROCESSING, MVD_INPUT_H264, MVD_OUTPUT_BGR565, MVD_DEFAULT_WORKBUF_SIZE, NULL)))
+		return false;
+	s_mvdReady = true;
+	return true;
+}
+
 static bool mvd_setup(u16 w, u16 h) {
-	if (!g_console.isNew) return false;
-	if (s_mvdReady && (w != s_mvdW || h != s_mvdH)) {
+	if (!g_console.hwH264) return false;
+	/* a new picture size needs a fresh decoder */
+	if (s_mvdReady && s_mvdW && (w != s_mvdW || h != s_mvdH)) {
 		mvdstdExit();
 		s_mvdReady = false;
 	}
-	if (!s_mvdReady) {
-		if (R_FAILED(mvdstdInit(MVDMODE_VIDEOPROCESSING, MVD_INPUT_H264, MVD_OUTPUT_BGR565, MVD_DEFAULT_WORKBUF_SIZE, NULL)))
-			return false;
-		s_mvdReady = true;
-	}
+	if (!mvd_start()) return false;
 	s_mvdW = w;
 	s_mvdH = h;
 	/* MVD's "BGR565" is the GPU's RGB565 */
@@ -168,14 +173,18 @@ bool video_init(void) {
 	s_nal = (u8*)linearMemAlign(VR3DS_MAX_FRAME + 16, 0x80);
 	if (!s_out || !s_nal) return false;
 	memset(s_out, 0, VIDEO_TEX_SIZE * VIDEO_TEX_SIZE * 2);
+	/* MVD writes this buffer by DMA: no dirty cache line may be written back over it later */
+	GSPGPU_FlushDataCache(s_out, VIDEO_TEX_SIZE * VIDEO_TEX_SIZE * 2);
 	for (int i = 0; i < 2; i++) {
 		if (!C3D_TexInit(&s_tex[i], VIDEO_TEX_SIZE, VIDEO_TEX_SIZE, GPU_RGB565)) return false;
 		C3D_TexSetFilter(&s_tex[i], GPU_LINEAR, GPU_LINEAR);
-		C3D_TexSetWrap(&s_tex[i], GPU_CLAMP_TO_BORDER, GPU_CLAMP_TO_BORDER);
-		s_tex[i].border = 0x000000FF;
+		C3D_TexSetWrap(&s_tex[i], GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
 	}
 	s_texOk = true;
 	s_fpsWindow = osGetTime();
+	/* only advertise hardware H.264 if the decoder really starts (it needs ~9 MB
+	   of linear memory); otherwise the PC sends JPEG */
+	g_console.hwH264 = g_console.isNew && mvd_start();
 	return true;
 }
 
@@ -232,6 +241,11 @@ void video_update(const Vr3dsConfig* cfg) {
 		bool ok = false;
 		if (h264) {
 			bool key = (f.flags & VR3DS_FRAME_KEY) != 0;
+			if (!key && s_haveLast && (s32)(f.frameId - s_lastId) <= 0) {
+				/* an older frame that completed late: already past it */
+				net_release_frame(&f);
+				continue;
+			}
 			bool gap = s_haveLast && f.frameId != s_lastId + 1;
 			if (!key && (s_needKey || gap)) {
 				/* references are missing: wait for the next key frame */
@@ -302,12 +316,14 @@ bool video_view(VideoView* out) {
 	out->encTanX = s_cfg.encTanX;
 	out->encTanY = s_cfg.encTanY;
 	out->u1 = ew / ts;
-	/* after the vertical flip, row 0 of the decoded picture is at v = 1 */
-	out->vLeft[0] = 1.0f - eh / ts;
+	/* after the vertical flip, row 0 of the decoded picture is at v = 1; the
+	   half-texel inset keeps linear filtering from mixing the two eyes */
+	float half = 0.5f / ts;
+	out->vLeft[0] = 1.0f - eh / ts + half;
 	out->vLeft[1] = 1.0f;
 	if (out->stereo) {
 		out->vRight[0] = 1.0f - 2.0f * eh / ts;
-		out->vRight[1] = 1.0f - eh / ts;
+		out->vRight[1] = 1.0f - eh / ts - half;
 	} else {
 		out->vRight[0] = out->vLeft[0];
 		out->vRight[1] = out->vLeft[1];
