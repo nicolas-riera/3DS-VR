@@ -230,6 +230,14 @@ static void RegisterDriver() {
 		if (NormalizePath(d) == mine) g_driverRegistered = true;
 }
 
+// Removes driver\3dsvr from SteamVR when the app closes: without the app,
+// SteamVR does not even see 3DS VR (it is registered again at the next start).
+static void UnregisterDriver() {
+	if (!g_runtimeFound || !g_driverRegistered) return;
+	RunHidden(g_runtimeDir + L"\\bin\\win64\\vrpathreg.exe", L"removedriver \"" + g_driverDir + L"\"");
+	g_driverRegistered = false;
+}
+
 static bool CheckFirewall() {
 	return RunHidden(SystemExe(L"netsh.exe"), L"advfirewall firewall show rule name=\"3DS VR\"") == 0;
 }
@@ -491,10 +499,11 @@ static void Paint(HDC hdc, const RECT& rc) {
 		Text(g, line, 32, 154, 12, kDim, false, 420);
 		Text(g, Widen(s.encoder, 48), 32, 174, 11, Color(255, 100, 108, 135), false, 420);
 		wchar_t batt[32];
-		swprintf(batt, 32, L"%u%%%s", s.battery, (s.batteryFlags & VR3DS_BATT_CHARGING) ? L" ⚡" : L"");
+		swprintf(batt, 32, L"%u%%", s.battery);
 		Color bc = s.battery <= 15 ? kRed : s.battery <= 35 ? kOrange : kGreen;
 		Text(g, batt, 352, 102, 17, bc, true, 96, StringAlignmentFar);
-		Text(g, L"battery", 352, 124, 11, kDim, false, 96, StringAlignmentFar);
+		Text(g, (s.batteryFlags & VR3DS_BATT_CHARGING) ? L"charging" : L"battery", 352, 124, 11, kDim, false, 96,
+			 StringAlignmentFar);
 	} else {
 		Text(g, L"No console connected", 32, 90, 17, kText, true);
 		Text(g, L"1. Start 3DS VR on your 3DS (same Wi-Fi network as this PC).", 32, 120, 12, kDim, false, 420);
@@ -806,6 +815,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
 		DispatchMessageW(&msg);
 	}
 
+	UnregisterDriver();
 	if (g_ipc != INVALID_SOCKET) closesocket(g_ipc);
 	GdiplusShutdown(gdipToken);
 	WSACleanup();
