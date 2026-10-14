@@ -1,0 +1,70 @@
+;
+; 3DS VR gamepad driver: a virtual Xbox 360 controller for XInput games.
+; User-mode (UMDF 2) driver on a root-enumerated device. 3DS VR.exe signs this
+; package with a certificate made on the PC and installs it (see the README).
+;
+
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       = System
+ClassGuid   = {4d36e97d-e325-11ce-bfc1-08002be10318}
+Provider    = %Provider%
+CatalogFile = vr3ds_gamepad.cat
+DriverVer   = 10/14/2026,1.0.0.0
+PnpLockdown = 1
+
+; Windows 10 1803 or later: the driver runs from the driver store
+[Manufacturer]
+%Provider% = Models,NTamd64.10.0...17134
+
+[Models.NTamd64.10.0...17134]
+%DeviceName% = Pad_Install, Root\3DSVR_Gamepad
+
+[SourceDisksNames]
+1 = %DiskName%
+
+[SourceDisksFiles]
+vr3ds_gamepad.dll = 1
+
+[DestinationDirs]
+Pad_CopyFiles = 13
+
+[Pad_Install.NT]
+CopyFiles = Pad_CopyFiles
+
+[Pad_CopyFiles]
+vr3ds_gamepad.dll
+
+[Pad_Install.NT.HW]
+AddReg = Pad_HW_AddReg
+
+[Pad_HW_AddReg]
+; games and SteamVR (any user) can read and write, admins and the system have full control
+HKR,,Security,,"D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GRGW;;;WD)(A;;GRGW;;;AC)"
+; own host process, away from other user-mode drivers
+HKR,WUDF,DeviceGroupId,,"3DSVRGamepad"
+
+; the kernel side is Windows' own UMDF reflector (WudfRd.inf only exists on Windows 11)
+[Pad_Install.NT.Services]
+AddService = WUDFRd, 0x000001fa, WUDFRD_ServiceInstall
+
+[WUDFRD_ServiceInstall]
+DisplayName   = %WudfRdDisplayName%
+ServiceType   = 1
+StartType     = 3
+ErrorControl  = 1
+ServiceBinary = %12%\WUDFRd.sys
+
+[Pad_Install.NT.Wdf]
+UmdfService      = vr3ds_gamepad, Pad_UmdfService
+UmdfServiceOrder = vr3ds_gamepad
+
+[Pad_UmdfService]
+UmdfLibraryVersion = 2.15.0
+ServiceBinary      = %13%\vr3ds_gamepad.dll
+
+[Strings]
+Provider          = "3DS VR"
+DeviceName        = "3DS VR Gamepad"
+DiskName          = "3DS VR gamepad driver"
+WudfRdDisplayName = "Windows Driver Foundation - User-mode Driver Framework Reflector"

@@ -25,7 +25,7 @@ enum IpcState : uint8_t {
 enum IpcGamepad : uint8_t {
 	IPC_PAD_IDLE = 0,
 	IPC_PAD_OK = 1,
-	IPC_PAD_NO_DRIVER = 2, // ViGEmBus is not installed
+	IPC_PAD_NO_DRIVER = 2, // neither the 3DS VR gamepad driver nor ViGEmBus
 	IPC_PAD_ERROR = 3,
 };
 

@@ -49,8 +49,8 @@ you want it. Its gyroscope tracks your head (3DoF), and its buttons are your Xbo
 
 - **Console:** custom firmware with the Homebrew Launcher, or FBI to install the CIA. For sound, the DSP firmware
   must be dumped (`sdmc:/3ds/dspfirm.cdc`, made by the [DSP1](https://github.com/zoogie/DSP1) homebrew).
-- **PC:** Windows 10 or 11, SteamVR, and a GPU with Direct3D 11. NVIDIA, AMD and Intel hardware H.264 encoders are
-  used through Media Foundation, and Windows' software encoder is the fallback.
+- **PC:** Windows 10 (1803 or later) or 11, SteamVR, and a GPU with Direct3D 11. NVIDIA, AMD and Intel hardware
+  H.264 encoders are used through Media Foundation, and Windows' software encoder is the fallback.
 - **Network:** the console and the PC on the same local network. The 3DS only has 2.4 GHz Wi-Fi, so keep it close
   to the access point.
 
@@ -66,8 +66,9 @@ with FBI to get a HOME Menu icon.
 
 1. registers its SteamVR driver (the `driver\3dsvr` folder next to it),
 2. offers to open UDP port 39630 in the Windows Firewall (one click, one admin prompt),
-3. offers to install [ViGEmBus](https://github.com/nefarius/ViGEmBus), the driver behind the virtual Xbox controller
-   (one click, one admin prompt),
+3. offers to install the 3DS VR gamepad driver, the driver behind the virtual Xbox controller (one click, one admin
+   prompt, see [Gamepad driver](#gamepad-driver)). If [ViGEmBus](https://github.com/nefarius/ViGEmBus) is already
+   installed, it works with that instead and there is nothing to install,
 4. starts SteamVR.
 
 The driver only activates while the app is running. Without the app, SteamVR behaves as if 3DS VR was not installed
@@ -131,7 +132,8 @@ Settings are saved in `sdmc:/3ds/3DS-VR/settings.ini`.
   change the field of view or move the 3D slider.
 - **Audio.** The default output device is captured with WASAPI loopback, resampled to 32 kHz and encoded to
   IMA-ADPCM (256 kbit/s).
-- **Gamepad.** A virtual Xbox 360 controller is created with ViGEmBus while a console is connected.
+- **Gamepad.** A virtual Xbox 360 controller is plugged in while a console is connected, through the 3DS VR
+  gamepad driver (below), or through ViGEmBus when only that is installed.
 - **Model and battery.** The console's model becomes the headset's model number, which selects that console's
   render model and status icons. The icons follow SteamVR's own style (see `driver.vrresources`). The battery
   level is reported as the headset's battery.
@@ -154,6 +156,37 @@ Settings are saved in `sdmc:/3ds/3DS-VR/settings.ini`.
 The wire protocol is described in [docs/protocol.md](docs/protocol.md) and defined in
 [protocol/vr3ds_protocol.h](protocol/vr3ds_protocol.h).
 
+### Gamepad driver
+
+`streamer/gamepad_driver/` is a small **user-mode** driver (UMDF 2, `vr3ds_gamepad.dll`) on a root-enumerated
+device, `Root\3DSVR_Gamepad`. Games find Xbox controllers through XInput, which enumerates the *XUSB* device
+interface and asks each device for its state with a few IOCTLs. The driver registers that interface and answers like
+a wired Xbox 360 controller: information, capabilities, state, vibration, LED, battery, Guide button wait. It
+supports the protocol of `xinput1_4` (Windows 8 and later), `xinput1_3` (most older games) and `xinput9_1_0`. The
+SteamVR driver feeds it through a second, private interface. The controller only exists while it holds the device
+open, so games see it plugged in when a console streams and unplugged otherwise.
+
+Windows only loads kernel drivers signed by Microsoft, but a user-mode driver only needs a driver package signed by
+a publisher the PC trusts. The project has no such certificate, so **the app makes one on your PC**, in one elevated
+step:
+
+1. it copies the package to a folder only administrators can write to, and checks that it is the exact package the
+   app was built with,
+2. it creates a code-signing certificate, *3DS VR Gamepad Driver (made on this PC)*, whose private key only exists
+   in memory,
+3. it writes the package's catalog (`vr3ds_gamepad.cat`) and signs it with that key,
+4. it adds the certificate (public part only) to the local machine's *Trusted Root Certification Authorities* and
+   *Trusted Publishers* stores, then drops the key: nothing else can ever be signed with it,
+5. it creates the device and installs the driver on it.
+
+So the driver is self-signed, and your PC trusts that one certificate. No private key ships with 3DS VR or stays on
+your PC. The certificate is per machine: another PC gets its own. **Remove** (next to the Xbox controller in the app,
+click twice) deletes the device, the driver package and the certificate. The details of each step are logged in
+`%APPDATA%\3DS VR\gamepad_setup.log`.
+
+The XUSB IOCTLs are not documented. Their codes and layouts come from public reverse engineering of the XInput DLLs,
+mainly [OpenXinput](https://github.com/Nemirtingas/OpenXinput). The driver is written from scratch, no code was copied.
+
 ## Troubleshooting
 
 | Problem | Try |
@@ -163,10 +196,12 @@ The wire protocol is described in [docs/protocol.md](docs/protocol.md) and defin
 | The picture freezes or breaks up | Lower *Video quality* or *Frame rate*, get closer to the access point, use 2D. |
 | Grey picture on New 3DS | It waits for a key frame. It should clear within a second, otherwise restart the stream. |
 | No sound | The DSP firmware dump is missing (the console says so). Sound also plays on the PC: turn the PC speakers down. |
-| No controller | Install ViGEmBus from the app. Virtual Desktop and Parsec ship their own gamepad drivers, which are not ViGEmBus. |
+| No controller | Click **Install** next to *Xbox controller* in the app. Games only see it while a console streams. `padtest.exe` (see [Building](#building)) lists what each XInput DLL sees. |
+| The gamepad driver does not start | Look at *3DS VR Gamepad* in Device Manager (System devices) and at `%APPDATA%\3DS VR\gamepad_setup.log`. Some security policies only allow drivers signed by Microsoft (Smart App Control, S mode, company policies): use ViGEmBus there. Click **Remove**, then **Install** to start over. |
+| "Restart Windows to finish" | Removing or updating the driver while SteamVR uses it needs a restart. Close SteamVR first to avoid it. |
 | The view drifts sideways | Without a magnetometer the heading drifts slowly: recenter. |
 
-Logs: `%APPDATA%\3DS VR\driver.log` on the PC, and SteamVR's `vrserver.txt`.
+Logs: `%APPDATA%\3DS VR\driver.log` and `gamepad_setup.log` on the PC, and SteamVR's `vrserver.txt`.
 
 ## Building
 
@@ -178,14 +213,19 @@ cd console
 ./build.sh          # dist/3DS-VR.3dsx, .cia and .3ds
 ```
 
-**PC.** You need Visual Studio 2022 (C++ desktop workload) and CMake 3.20 or newer. The OpenVR driver header and
-ViGEmClient are downloaded at configure time.
+**PC.** You need Visual Studio 2022 (C++ desktop workload) and CMake 3.20 or newer. The OpenVR driver header,
+ViGEmClient and the UMDF headers of the WDK are downloaded at configure time. The WDK comes from NuGet
+(`Microsoft.Windows.WDK.x64`, a 106 MB download, only the few UMDF files are kept). `-DVR3DS_GAMEPAD_DRIVER=OFF`
+builds without the gamepad driver (ViGEmBus only).
 
 ```sh
 cd streamer
 cmake -S . -B build -G "Visual Studio 17 2022" -A x64
 cmake --build build --config Release   # build/dist/3DS VR/ is the folder to ship
 ```
+
+`build/Release/padtest.exe` tests the gamepad driver: without arguments it lists the XUSB devices and what each XInput
+DLL reports, `padtest feed` plugs the controller in and moves its left stick, like the SteamVR driver would.
 
 **Assets.** The icons, banner, jingle, SteamVR status icons, render models and `driver.vrresources` come from one
 script that uses only the standard library:
@@ -207,7 +247,8 @@ python3 tools/fake_console.py --model new3dsxl --seconds 20   # or --model 3ds f
 ```
 protocol/   wire protocol shared by both sides
 console/    3DS app (source/, shaders/reproject.v.pica, meta/ for the icon, banner and RSF)
-streamer/   PC side: driver/ (SteamVR driver and its resources), app/ (3DS VR.exe), common/ (driver <-> app link)
+streamer/   PC side: driver/ (SteamVR driver and its resources), app/ (3DS VR.exe), common/ (driver <-> app link),
+            gamepad_driver/ (virtual Xbox 360 controller driver and its INF, padtest)
 tools/      asset generator, fake console for testing
 docs/       protocol description
 ```
@@ -215,4 +256,7 @@ docs/       protocol description
 ## License
 
 [MIT](LICENSE). Parts of the console's sensor fusion come from [SlimeVR 3DS](https://github.com/nicolas-riera/SlimeVR-3DS)
-(MIT). ViGEmClient is MIT, and the OpenVR header is BSD-3-Clause. 3DS VR is not affiliated with Nintendo or Valve.
+(MIT). ViGEmClient is MIT, and the OpenVR header is BSD-3-Clause. The gamepad driver is built with the UMDF headers
+and stub library of Microsoft's Windows Driver Kit (downloaded at build time, under the WDK license), and its XUSB
+protocol follows the reverse engineering published by [OpenXinput](https://github.com/Nemirtingas/OpenXinput) (used
+as documentation only). 3DS VR is not affiliated with Nintendo, Valve or Microsoft.

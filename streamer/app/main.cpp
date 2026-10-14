@@ -1,6 +1,7 @@
 // 3DS VR app: the only thing the user starts on the PC.
 //  - registers the SteamVR driver that ships next to it,
-//  - offers to open the firewall port and to install ViGEmBus (Xbox controller),
+//  - offers to open the firewall port and to install the gamepad driver (Xbox
+//    controller), and runs elevated as "3DS VR.exe --install-gamepad" for that,
 //  - starts SteamVR (the driver only activates while this app runs),
 //  - shows the pairing requests and the stream status.
 #include <winsock2.h>
@@ -8,9 +9,9 @@
 #include <windows.h>
 #include <windowsx.h>
 #include <dwmapi.h>
+#include <objbase.h>
 #include <shellapi.h>
 #include <tlhelp32.h>
-#include <urlmon.h>
 
 #include <algorithm>
 #include <atomic>
@@ -27,8 +28,10 @@ using std::min;
 
 #include <ViGEm/Client.h>
 
+#include "gamepad_setup.h"
 #include "ipc.h"
 #include "resource.h"
+#include "vr3ds_pad.h"
 #include "vr3ds_protocol.h"
 
 #pragma comment(lib, "gdiplus.lib")
@@ -37,7 +40,7 @@ using namespace Gdiplus;
 
 // ------------------------------------------------------------------ state
 
-enum Task { TASK_NONE, TASK_FIREWALL, TASK_VIGEM, TASK_RESTART_STEAMVR };
+enum Task { TASK_NONE, TASK_FIREWALL, TASK_PAD_INSTALL, TASK_PAD_REMOVE, TASK_RESTART_STEAMVR };
 
 enum : UINT {
 	WM_APP_TASK_DONE = WM_APP + 1,
@@ -49,7 +52,7 @@ enum ButtonId {
 	BTN_REFUSE,
 	BTN_STEAMVR,
 	BTN_FIREWALL,
-	BTN_VIGEM,
+	BTN_PAD,
 	BTN_FORGET,
 };
 
@@ -74,6 +77,8 @@ static bool g_runtimeFound;
 static bool g_driverRegistered;
 static bool g_firewallOk;
 static bool g_vigemOk;
+static bool g_padRunning, g_padInstalled; // the 3DS VR gamepad driver
+static bool g_padReboot;
 static bool g_steamvrRunning;
 static bool g_steamvrLaunched;
 static DWORD g_steamvrStartTick;
@@ -85,6 +90,8 @@ static int g_hover = -1;
 static int g_pressed = -1;
 static bool g_forgetArmed;
 static DWORD g_forgetArmedTick;
+static bool g_padRemoveArmed;
+static DWORD g_padRemoveArmedTick;
 
 static const wchar_t* const kModelNames[] = {L"Nintendo 3DS", L"Nintendo 3DS XL", L"New Nintendo 3DS",
 											   L"Nintendo 2DS", L"New Nintendo 3DS XL", L"New Nintendo 2DS XL"};
@@ -227,8 +234,9 @@ static bool CheckFirewall() {
 	return RunHidden(SystemExe(L"netsh.exe"), L"advfirewall firewall show rule name=\"3DS VR\"") == 0;
 }
 
-// Connects to the bus like the driver does: ViGEmBus can be installed under
-// other names (Virtual Desktop ships it as "Virtual Desktop Gamepad Emulation Bus").
+// The fallback when the 3DS VR gamepad driver is not installed. Connects to the
+// bus like the driver does: ViGEmBus can be installed under other names
+// (Virtual Desktop ships it as "Virtual Desktop Gamepad Emulation Bus").
 static bool CheckVigem() {
 	PVIGEM_CLIENT client = vigem_alloc();
 	if (!client) return false;
@@ -284,17 +292,25 @@ static void RunTask(Task t) {
 									 L"advfirewall firewall add rule name=\"3DS VR\" dir=in action=allow protocol=UDP "
 									 L"localport=" + std::to_wstring(VR3DS_PORT_STREAMER) + L" profile=any");
 			if (code != 0) g_taskError = L"The firewall rule was not added.";
-		} else if (t == TASK_VIGEM) {
-			wchar_t tmp[MAX_PATH];
-			GetTempPathW(MAX_PATH, tmp);
-			std::wstring file = std::wstring(tmp) + L"ViGEmBus_1.22.0_x64_x86_arm64.exe";
-			HRESULT hr = URLDownloadToFileW(
-				nullptr, L"https://github.com/nefarius/ViGEmBus/releases/download/v1.22.0/ViGEmBus_1.22.0_x64_x86_arm64.exe",
-				file.c_str(), 0, nullptr);
-			if (FAILED(hr)) g_taskError = L"Could not download ViGEmBus.";
-			else if (RunElevated(file, L"/passive /norestart", 300000) != 0 && !CheckVigem())
-				g_taskError = L"ViGEmBus was not installed.";
-			DeleteFileW(file.c_str());
+		} else if (t == TASK_PAD_INSTALL || t == TASK_PAD_REMOVE) {
+			// this exe again, elevated: one admin prompt for the whole job
+			bool install = t == TASK_PAD_INSTALL;
+			wchar_t exe[MAX_PATH];
+			GetModuleFileNameW(nullptr, exe, MAX_PATH);
+			std::wstring inf = g_exeDir + L"\\gamepad\\" VR3DS_PAD_INF_NAME;
+			if (install && GetFileAttributesW(inf.c_str()) == INVALID_FILE_ATTRIBUTES) {
+				g_taskError = L"The gamepad folder is missing.";
+			} else {
+				DWORD code = RunElevated(exe, install ? PAD_ARG_INSTALL : PAD_ARG_REMOVE, 300000);
+				if (code == ERROR_SUCCESS_REBOOT_REQUIRED) g_padReboot = true;
+				else if (code == (DWORD)-1)
+					g_taskError = install ? L"The driver was not installed." : L"The driver was not removed.";
+				else if (code != ERROR_SUCCESS) {
+					wchar_t msg[64];
+					swprintf(msg, 64, install ? L"Install failed (0x%08X)" : L"Removal failed (0x%08X)", code);
+					g_taskError = msg;
+				}
+			}
 		} else if (t == TASK_RESTART_STEAMVR) {
 			for (const wchar_t* p : {L"vrmonitor.exe", L"vrdashboard.exe", L"vrwebhelper.exe", L"vrcompositor.exe",
 									 L"vrserver.exe", L"vrstartup.exe"})
@@ -310,6 +326,8 @@ static void SetupThread() {
 	RegisterDriver();
 	g_firewallOk = CheckFirewall();
 	g_vigemOk = CheckVigem();
+	g_padRunning = PadDriverRunning();
+	g_padInstalled = PadDriverInstalled();
 	PostMessageW(g_hwnd, WM_APP_SETUP_DONE, 0, 0);
 }
 
@@ -506,15 +524,25 @@ static void Paint(HDC hdc, const RECT& rc) {
 		SetupRow(g, y, kOrange, L"Network", L"Windows Firewall may block consoles.", BTN_FIREWALL,
 				 g_task == TASK_FIREWALL ? L"Waiting..." : L"Allow");
 	y += 46;
-	if (!g_vigemOk)
-		SetupRow(g, y, kOrange, L"Xbox controller", L"Needs the ViGEmBus driver.", BTN_VIGEM,
-				 g_task == TASK_VIGEM ? L"Installing..." : L"Install");
+	// the 3DS VR gamepad driver, or ViGEmBus when it is already there
+	ButtonId padBtn = g_padInstalled ? BTN_PAD : (ButtonId)0;
+	const wchar_t* padLabel = g_padRemoveArmed ? L"Click again" : L"Remove";
+	if (g_task == TASK_PAD_INSTALL || g_task == TASK_PAD_REMOVE)
+		SetupRow(g, y, kOrange, L"Xbox controller",
+				 g_task == TASK_PAD_INSTALL ? L"Installing the gamepad driver..." : L"Removing the gamepad driver...");
+	else if (g_padReboot)
+		SetupRow(g, y, kOrange, L"Xbox controller", L"Restart Windows to finish.");
+	else if (g_padInstalled && !g_padRunning)
+		SetupRow(g, y, kRed, L"Xbox controller", L"The gamepad driver does not start.", padBtn, padLabel);
+	else if (!g_padRunning && !g_vigemOk)
+		SetupRow(g, y, kOrange, L"Xbox controller", L"Needs the 3DS VR gamepad driver.", BTN_PAD, L"Install");
 	else if (streaming && g_status.gamepad == IPC_PAD_OK)
-		SetupRow(g, y, kGreen, L"Xbox controller", L"Connected: the console is an Xbox 360 controller.");
+		SetupRow(g, y, kGreen, L"Xbox controller", L"Connected as an Xbox 360 controller.", padBtn, padLabel);
 	else if (streaming && g_status.gamepad != IPC_PAD_OK)
-		SetupRow(g, y, kRed, L"Xbox controller", L"Could not create the virtual controller.");
+		SetupRow(g, y, kRed, L"Xbox controller", L"Could not create the virtual controller.", padBtn, padLabel);
 	else
-		SetupRow(g, y, kGreen, L"Xbox controller", L"Ready (appears when a console connects).");
+		SetupRow(g, y, kGreen, L"Xbox controller",
+				 g_padRunning ? L"Ready (appears when a console connects)." : L"Ready with ViGEmBus.", padBtn, padLabel);
 	y += 46;
 	if (streaming)
 		SetupRow(g, y, g_status.audio ? kGreen : kOrange, L"Sound",
@@ -567,8 +595,16 @@ static void OnButton(ButtonId id) {
 	case BTN_FIREWALL:
 		RunTask(TASK_FIREWALL);
 		break;
-	case BTN_VIGEM:
-		RunTask(TASK_VIGEM);
+	case BTN_PAD:
+		if (!g_padInstalled) {
+			RunTask(TASK_PAD_INSTALL);
+		} else if (g_padRemoveArmed && GetTickCount() - g_padRemoveArmedTick < 4000) {
+			g_padRemoveArmed = false;
+			RunTask(TASK_PAD_REMOVE);
+		} else {
+			g_padRemoveArmed = true;
+			g_padRemoveArmedTick = GetTickCount();
+		}
 		break;
 	case BTN_FORGET:
 		if (g_forgetArmed && GetTickCount() - g_forgetArmedTick < 4000) {
@@ -630,6 +666,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 		} else {
 			g_steamvrRunning = ProcessRunning(L"vrserver.exe");
 			if (g_forgetArmed && GetTickCount() - g_forgetArmedTick > 4000) g_forgetArmed = false;
+			if (g_padRemoveArmed && GetTickCount() - g_padRemoveArmedTick > 4000) g_padRemoveArmed = false;
+			if (g_padInstalled && !g_padRunning && g_task == TASK_NONE) g_padRunning = PadDriverRunning();
 			InvalidateRect(hwnd, nullptr, FALSE);
 		}
 		return 0;
@@ -641,7 +679,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 		return 0;
 	case WM_APP_TASK_DONE:
 		if ((Task)wp == TASK_FIREWALL) g_firewallOk = CheckFirewall();
-		if ((Task)wp == TASK_VIGEM) g_vigemOk = CheckVigem();
+		if ((Task)wp == TASK_PAD_INSTALL || (Task)wp == TASK_PAD_REMOVE) {
+			g_padRunning = PadDriverRunning();
+			g_padInstalled = PadDriverInstalled();
+		}
 		g_task = TASK_NONE;
 		InvalidateRect(hwnd, nullptr, FALSE);
 		return 0;
@@ -703,6 +744,21 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 }
 
 int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, PWSTR, int show) {
+	// elevated helper started by the app itself: install or remove the gamepad
+	// driver, the exit code is the result
+	int argc = 0;
+	LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+	bool padInstall = argc > 1 && !wcscmp(argv[1], PAD_ARG_INSTALL);
+	bool padRemove = argc > 1 && !wcscmp(argv[1], PAD_ARG_REMOVE);
+	LocalFree(argv);
+	if (padInstall || padRemove) {
+		wchar_t self[MAX_PATH];
+		GetModuleFileNameW(nullptr, self, MAX_PATH);
+		std::wstring dir = self;
+		dir = dir.substr(0, dir.find_last_of(L'\\'));
+		return (int)(padInstall ? InstallPadDriver(dir + L"\\gamepad") : RemovePadDriver());
+	}
+
 	// one instance: it is also what tells the driver to activate
 	HANDLE mutex = CreateMutexW(nullptr, TRUE, VR3DS_APP_MUTEX);
 	if (GetLastError() == ERROR_ALREADY_EXISTS) {
