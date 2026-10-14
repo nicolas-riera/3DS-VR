@@ -384,8 +384,9 @@ static void top_status(const UiInfo* info) {
 	u32 ip = n->localIp;
 	switch (n->state) {
 	case NET_OFFLINE:
-		text(200, 100, 0.7f, C_ORANGE, C2D_AlignCenter, "No network");
-		text(200, 132, 0.5f, C_DIM, C2D_AlignCenter, "Turn on Wi-Fi and connect to the same network as your PC.");
+		text(200, 100, 0.7f, C_ORANGE, C2D_AlignCenter, "Connecting to Wi-Fi...");
+		text(200, 126, 0.48f, C_DIM, C2D_AlignCenter, "Wi-Fi must be on, with an access point saved");
+		text(200, 146, 0.48f, C_DIM, C2D_AlignCenter, "in System Settings (same network as your PC).");
 		break;
 	case NET_SEARCHING:
 		text(200, 96, 0.7f, C_TEXT, C2D_AlignCenter, "Looking for your PC...");

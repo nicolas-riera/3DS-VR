@@ -13,6 +13,7 @@
 #include "audio.h"
 #include "settings.h"
 #include "sysinfo.h"
+#include "wifilock.h"
 
 #define SLOT_COUNT         6
 #define MAX_FRAGS          (VR3DS_MAX_FRAME / VR3DS_VIDEO_PAYLOAD + 1)
@@ -22,6 +23,8 @@
 #define HELLO_PERIOD_MS    500
 #define SETTINGS_PERIOD_MS 1000
 #define KEYREQ_MIN_MS      150
+#define RECONNECT_DELAY_MS 1000
+#define RECONNECT_EVERY_MS 10000
 
 typedef enum { SLOT_FREE, SLOT_FILLING, SLOT_READY, SLOT_BUSY } SlotState;
 
@@ -52,6 +55,8 @@ static volatile bool s_settingsDirty, s_disconnectReq, s_reopen;
 static u64 s_lastRx, s_lastHello, s_lastSettings, s_lastKeyReq, s_stateSince, s_lastIpCheck;
 static u32 s_rxBytes;
 static u64 s_rxWindow;
+static u64 s_wifiLost, s_lastReconnect;
+static u32 s_ip;
 static u32 s_settingsSeq;
 static u32 s_bcast;
 static u32 s_leftSession;  /* session we just left: its CONFIG resends must not pull us back */
@@ -401,18 +406,32 @@ static bool open_socket(void) {
 	return true;
 }
 
-static void refresh_ip(void) {
-	struct in_addr ip, mask, bcast;
-	u32 local = 0;
-	if (SOCU_GetIPInfo(&ip, &mask, &bcast) == 0) {
-		local = ip.s_addr;
+static void refresh_ip(u64 now) {
+	u32 wifi = 0;
+	struct in_addr ip = {0}, mask = {0}, bcast = {0};
+	bool up = R_SUCCEEDED(ACU_GetWifiStatus(&wifi)) && wifi != 0 && SOCU_GetIPInfo(&ip, &mask, &bcast) == 0 &&
+			  ip.s_addr != 0;
+	if (up) {
 		s_bcast = bcast.s_addr ? bcast.s_addr : (ip.s_addr | ~mask.s_addr);
+		if (ip.s_addr != s_ip) close_socket(); /* new network: bind again */
+		s_ip = ip.s_addr;
 	} else {
-		local = (u32)gethostid();
+		if (s_ip || s_wifiLost == 0) {
+			close_socket();
+			s_wifiLost = now;
+			s_lastReconnect = 0;
+		}
+		s_ip = 0;
+		/* Taking the exclusive infrastructure state (wifilock) drops the
+		   system's connection, and nothing reconnects it but us. */
+		if (now - s_wifiLost >= RECONNECT_DELAY_MS && now - s_lastReconnect >= RECONNECT_EVERY_MS) {
+			s_lastReconnect = now;
+			wifilock_reconnect();
+		}
 	}
 	LightLock_Lock(&s_lock);
-	s_st.localIp = local;
-	if (local == 0) {
+	s_st.localIp = s_ip;
+	if (!up) {
 		set_state_locked(NET_OFFLINE);
 	} else if (s_st.state == NET_OFFLINE) {
 		set_state_locked(NET_SEARCHING);
@@ -421,9 +440,10 @@ static void refresh_ip(void) {
 }
 
 static void tick(u64 now) {
-	if (now - s_lastIpCheck >= 2000 || s_lastIpCheck == 0) {
+	u64 ipEvery = s_st.state == NET_OFFLINE ? 500 : 2000;
+	if (now - s_lastIpCheck >= ipEvery || s_lastIpCheck == 0) {
 		s_lastIpCheck = now;
-		refresh_ip();
+		refresh_ip(now);
 		if (s_sock < 0 && s_st.state != NET_OFFLINE) open_socket();
 	}
 

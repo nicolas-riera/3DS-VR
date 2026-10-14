@@ -163,7 +163,7 @@ The wire protocol is described in [docs/protocol.md](docs/protocol.md) and defin
 | The picture freezes or breaks up | Lower *Video quality* or *Frame rate*, get closer to the access point, use 2D. |
 | Grey picture on New 3DS | It waits for a key frame. It should clear within a second, otherwise restart the stream. |
 | No sound | The DSP firmware dump is missing (the console says so). Sound also plays on the PC: turn the PC speakers down. |
-| No controller | Install ViGEmBus from the app. |
+| No controller | Install ViGEmBus from the app. Virtual Desktop and Parsec ship their own gamepad drivers, which are not ViGEmBus. |
 | The view drifts sideways | Without a magnetometer the heading drifts slowly: recenter. |
 
 Logs: `%APPDATA%\3DS VR\driver.log` on the PC, and SteamVR's `vrserver.txt`.
