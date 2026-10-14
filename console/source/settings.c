@@ -42,6 +42,7 @@ static void defaults(void) {
 	g_settings.want3D = g_console.has3D && g_console.isNew;
 	g_settings.nintendoLayout = false;
 	g_settings.heightCm = 170;
+	g_settings.controls = VR3DS_CONTROLS_XBOX;
 }
 
 static void sanitize(void) {
@@ -54,6 +55,7 @@ static void sanitize(void) {
 	if (!g_console.has3D) g_settings.want3D = false;
 	if (g_settings.heightCm < HEIGHT_MIN) g_settings.heightCm = HEIGHT_MIN;
 	if (g_settings.heightCm > HEIGHT_MAX) g_settings.heightCm = HEIGHT_MAX;
+	if (g_settings.controls != VR3DS_CONTROLS_VR) g_settings.controls = VR3DS_CONTROLS_XBOX;
 }
 
 void settings_load(void) {
@@ -69,6 +71,8 @@ void settings_load(void) {
 			else if (sscanf(line, "3d=%d", &v) == 1) g_settings.want3D = v != 0;
 			else if (sscanf(line, "nintendo_layout=%d", &v) == 1) g_settings.nintendoLayout = v != 0;
 			else if (sscanf(line, "height_cm=%d", &v) == 1) g_settings.heightCm = v;
+			else if (sscanf(line, "vr_controllers=%d", &v) == 1)
+				g_settings.controls = v ? VR3DS_CONTROLS_VR : VR3DS_CONTROLS_XBOX;
 		}
 		fclose(f);
 	}
@@ -82,9 +86,9 @@ void settings_save(void) {
 	mkdir(APP_DIR, 0777);
 	FILE* f = fopen(SETTINGS_PATH, "w");
 	if (!f) return;
-	fprintf(f, "fov=%d\nquality=%d\nfps=%d\n3d=%d\nnintendo_layout=%d\nheight_cm=%d\n", g_settings.fovDeg,
-			g_settings.quality, g_settings.fps, g_settings.want3D ? 1 : 0, g_settings.nintendoLayout ? 1 : 0,
-			g_settings.heightCm);
+	fprintf(f, "fov=%d\nquality=%d\nfps=%d\n3d=%d\nnintendo_layout=%d\nheight_cm=%d\nvr_controllers=%d\n",
+			g_settings.fovDeg, g_settings.quality, g_settings.fps, g_settings.want3D ? 1 : 0,
+			g_settings.nintendoLayout ? 1 : 0, g_settings.heightCm, g_settings.controls == VR3DS_CONTROLS_VR ? 1 : 0);
 	fclose(f);
 }
 
@@ -115,5 +119,6 @@ void settings_stream(Vr3dsStreamSettings* out) {
 	s.tanX = tanX;
 	s.tanY = tanY;
 	s.heightCm = (uint16_t)g_settings.heightCm;
+	s.controls = (uint8_t)g_settings.controls;
 	memcpy(out, &s, sizeof(s));
 }

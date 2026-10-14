@@ -60,3 +60,13 @@ inline void QuatRotate(const Quat& q, const float v[3], float out[3]) {
 inline vr::HmdQuaternion_t ToHmdQuat(const Quat& q) {
 	return {q.w, q.x, q.y, q.z};
 }
+
+// a then b (a * b)
+inline Quat QuatMul(const Quat& a, const Quat& b) {
+	Quat q;
+	q.w = a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z;
+	q.x = a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y;
+	q.y = a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x;
+	q.z = a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w;
+	return q;
+}

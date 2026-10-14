@@ -92,6 +92,12 @@ typedef struct {
 	uint16_t reserved;
 } Vr3dsHeader;
 
+/* What the console's buttons are on the PC. */
+typedef enum {
+	VR3DS_CONTROLS_XBOX = 0, /* an Xbox 360 controller */
+	VR3DS_CONTROLS_VR = 1,   /* two motion controllers held in front of the view */
+} Vr3dsControls;
+
 /* What the console would like to receive. */
 typedef struct {
 	uint8_t stereo;        /* 1: both eyes, 0: one centred view */
@@ -99,7 +105,8 @@ typedef struct {
 	uint16_t bitrateKbps;
 	float tanX, tanY;      /* half-FOV tangents of the visible top screen */
 	uint16_t heightCm;     /* the player's height: places the head in SteamVR */
-	uint16_t reserved;
+	uint8_t controls;      /* Vr3dsControls */
+	uint8_t reserved;
 } Vr3dsStreamSettings;
 
 typedef struct {

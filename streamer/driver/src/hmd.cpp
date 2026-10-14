@@ -160,6 +160,13 @@ void Hmd::OnTracking(const Quat& q) {
 	UpdatePose(q, true);
 }
 
+void Hmd::HeadPose(Quat* q, float pos[3]) {
+	std::lock_guard<std::mutex> lock(m_poseMutex);
+	const HmdQuaternion_t& r = m_pose.qRotation;
+	*q = Quat{(float)r.w, (float)r.x, (float)r.y, (float)r.z};
+	for (int i = 0; i < 3; i++) pos[i] = (float)m_pose.vecPosition[i];
+}
+
 // ----------------------------------------------------- session -> SteamVR
 
 void Hmd::SetSystemButton(bool down) {

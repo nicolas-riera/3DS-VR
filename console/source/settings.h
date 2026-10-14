@@ -16,6 +16,7 @@ typedef struct {
 	bool want3D;
 	bool nintendoLayout; /* false: Xbox positions (B = Xbox A), true: matching letters */
 	int heightCm;        /* the player's height, for the head height in SteamVR */
+	int controls;        /* Vr3dsControls */
 } Settings;
 
 extern Settings g_settings;

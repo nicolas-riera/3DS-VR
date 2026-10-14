@@ -23,6 +23,8 @@ public:
 	void OnTracking(const Quat& q);
 	// The headset's system button (Guide on the console): toggles SteamVR's dashboard.
 	void SetSystemButton(bool down);
+	// The last pose given to SteamVR (with the neck model).
+	void HeadPose(Quat* q, float pos[3]);
 	void Stop();
 
 	// ITrackedDeviceServerDriver

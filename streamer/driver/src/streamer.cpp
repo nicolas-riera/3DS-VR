@@ -253,7 +253,8 @@ void Streamer::StartSession(const Vr3dsHello& h, const sockaddr_in& from) {
 	}
 	Log("Session started with \"%s\" (model %u, %s)", FixedName(h.name, sizeof(h.name)).c_str(), h.model,
 		AddrStr(from).c_str());
-	m_gamepad.Connect();
+	m_padControls = h.settings.controls;
+	if (m_padControls != VR3DS_CONTROLS_VR) m_gamepad.Connect();
 	m_audio.Start([this](const uint8_t* p, int n) {
 		sockaddr_in to;
 		{
@@ -280,7 +281,7 @@ void Streamer::EndSession(const char* reason) {
 	m_audio.Stop();
 	m_gamepad.Disconnect();
 	m_dashboardOpen = false;
-	if (m_onPad) m_onPad(Vr3dsGamepad{}, false, false);
+	if (m_onPad) m_onPad(Vr3dsGamepad{}, false, false, m_padControls);
 }
 
 void Streamer::OnHello(const Vr3dsHello& h, const sockaddr_in& from) {
@@ -372,7 +373,18 @@ void Streamer::OnPacket(const uint8_t* data, int len, const sockaddr_in& from) {
 			if (guide && !m_guideDown) m_dashboardOpen = !m_dashboardOpen;
 			m_guideDown = guide;
 		}
-		if (m_onPad) m_onPad(t->pad, true, m_dashboardOpen);
+		uint8_t controls;
+		{
+			std::lock_guard<std::mutex> lock(m_mutex);
+			controls = m_s.wanted.controls;
+		}
+		if (controls != m_padControls) {
+			// VR controllers replace the Xbox controller (games would get every button twice)
+			m_padControls = controls;
+			if (controls == VR3DS_CONTROLS_VR) m_gamepad.Disconnect();
+			else m_gamepad.Connect();
+		}
+		if (m_onPad) m_onPad(t->pad, true, m_dashboardOpen, controls);
 		{
 			// Guide opens SteamVR's dashboard (on Windows the Xbox button opens the Game Bar)
 			Vr3dsGamepad xpad = t->pad;

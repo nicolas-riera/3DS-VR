@@ -9,6 +9,7 @@
 
 #include "compositor.h"
 #include "controls.h"
+#include "hands.h"
 #include "hmd.h"
 #include "ipc.h"
 #include "log.h"
@@ -38,21 +39,33 @@ public:
 		m_streamer = std::make_unique<Streamer>();
 		m_hmd = std::make_unique<Hmd>(m_compositor.get(), m_streamer.get());
 		m_controls = std::make_unique<Controls>();
+		m_hands[0] = std::make_unique<Hand>(true);
+		m_hands[1] = std::make_unique<Hand>(false);
 		Hmd* hmd = m_hmd.get();
 		Controls* controls = m_controls.get();
+		Hand* hands[2] = {m_hands[0].get(), m_hands[1].get()};
 		if (!m_streamer->Start(
 				m_compositor.get(), [hmd](const Quat& q) { hmd->OnTracking(q); },
-				[hmd, controls](const Vr3dsGamepad& pad, bool connected, bool dashboard) {
+				[hmd, controls, hands](const Vr3dsGamepad& pad, bool connected, bool dashboard, uint8_t mode) {
+					bool vr = mode == VR3DS_CONTROLS_VR;
 					hmd->SetSystemButton(connected && (pad.buttons & VR3DS_BTN_GUIDE));
-					// only there while the dashboard is open: games (VRChat) would see a tracker
-					// and get every button twice, from it and from the Xbox controller
-					controls->Update(pad, connected && dashboard);
+					// Xbox mode: only there while the dashboard is open, or games (VRChat) would
+					// see a tracker and get every button twice (from it and the Xbox controller).
+					// VR mode: the hands drive the dashboard themselves.
+					controls->Update(pad, connected && dashboard && !vr);
+					Quat q;
+					float pos[3];
+					hmd->HeadPose(&q, pos);
+					for (Hand* h : hands) h->Update(pad, connected && vr, q, pos);
 				}))
 			return Fail("Network unavailable");
 		if (!VRServerDriverHost()->TrackedDeviceAdded("3DSVR-HMD", TrackedDeviceClass_HMD, m_hmd.get()))
 			return Fail("SteamVR refused the headset");
 		if (!VRServerDriverHost()->TrackedDeviceAdded("3DSVR-CONTROLS", TrackedDeviceClass_Controller, controls))
 			Log("SteamVR refused the console controls");
+		for (Hand* h : hands)
+			if (!VRServerDriverHost()->TrackedDeviceAdded(h->Serial(), TrackedDeviceClass_Controller, h))
+				Log("SteamVR refused %s", h->Serial());
 		Log("3DS VR driver ready");
 		return VRInitError_None;
 	}
@@ -96,6 +109,7 @@ private:
 		m_compositor.release();
 		m_hmd.release();
 		m_controls.release();
+		for (auto& h : m_hands) h.release();
 		if (m_timerPeriod) timeEndPeriod(1);
 		m_timerPeriod = false;
 	}
@@ -105,6 +119,7 @@ private:
 	std::unique_ptr<Streamer> m_streamer;
 	std::unique_ptr<Hmd> m_hmd;
 	std::unique_ptr<Controls> m_controls;
+	std::unique_ptr<Hand> m_hands[2];
 };
 
 static ServerProvider g_provider;

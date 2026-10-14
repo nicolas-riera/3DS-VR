@@ -44,6 +44,7 @@ typedef enum {
 	B_HEIGHT_UP,
 	B_3D,
 	B_LAYOUT,
+	B_CONTROLS,
 	B_BACK,
 	B_RESET_PAIRING,
 } ButtonId;
@@ -58,8 +59,8 @@ typedef struct {
 #define MAX_BUTTONS 16
 
 /* settings rows */
-#define ROW_Y(i) (29.0f + (i) * 29.0f)
-#define ROW_H    25.0f
+#define ROW_Y(i) (27.0f + (i) * 25.0f)
+#define ROW_H    22.0f
 #define REPEAT_DELAY_MS 400
 #define REPEAT_EVERY_MS 70
 
@@ -155,6 +156,7 @@ static void layout(bool streaming) {
 		add_button(B_FPS_UP, 276, ROW_Y(3), 36, ROW_H, "+", false);
 		if (g_console.has3D) add_button(B_3D, 168, ROW_Y(4), 144, ROW_H, NULL, false);
 		add_button(B_LAYOUT, 168, ROW_Y(5), 144, ROW_H, NULL, false);
+		add_button(B_CONTROLS, 168, ROW_Y(6), 144, ROW_H, NULL, false);
 		add_button(B_BACK, 8, 204, 96, 30, "Back", false);
 		add_button(B_RESET_PAIRING, 112, 204, 120, 30, NULL, false);
 		add_button(B_EXIT, 240, 204, 72, 30, "Exit", false);
@@ -201,6 +203,8 @@ static const char* button_label(const Button* b) {
 		return g_settings.want3D ? "3D: On" : "3D: Off";
 	case B_LAYOUT:
 		return g_settings.nintendoLayout ? "Same letters" : "Xbox positions";
+	case B_CONTROLS:
+		return g_settings.controls == VR3DS_CONTROLS_VR ? "VR controllers" : "Xbox controller";
 	case B_RESET_PAIRING:
 		if (osGetTime() < s_resetArmedUntil) return "Tap again";
 		return "Forget PCs";
@@ -285,6 +289,10 @@ static void on_tap(ButtonId id, UiActions* act) {
 		break;
 	case B_LAYOUT:
 		g_settings.nintendoLayout = !g_settings.nintendoLayout;
+		act->settingsChanged = true;
+		break;
+	case B_CONTROLS:
+		g_settings.controls = g_settings.controls == VR3DS_CONTROLS_VR ? VR3DS_CONTROLS_XBOX : VR3DS_CONTROLS_VR;
 		act->settingsChanged = true;
 		break;
 	case B_RESET_PAIRING:
@@ -441,7 +449,7 @@ void ui_draw_top_overlay(const UiInfo* info) {
 
 static void bottom_settings(const UiInfo* info) {
 	header(info, "Settings");
-	const float lx = 10, ty = 4;
+	const float lx = 10, ty = 3;
 	int inches = (int)(g_settings.heightCm / 2.54f + 0.5f);
 	text(lx, ROW_Y(0) + ty, 0.5f, C_TEXT, C2D_AlignLeft, "Field of view");
 	text(240, ROW_Y(0) + ty, 0.5f, C_TEXT, C2D_AlignCenter, "%d°", g_settings.fovDeg);
@@ -454,6 +462,7 @@ static void bottom_settings(const UiInfo* info) {
 	text(240, ROW_Y(3) + ty, 0.5f, C_TEXT, C2D_AlignCenter, "%d fps", g_settings.fps);
 	if (g_console.has3D) text(lx, ROW_Y(4) + ty, 0.5f, C_TEXT, C2D_AlignLeft, "Stereoscopic 3D");
 	text(lx, ROW_Y(5) + ty, 0.5f, C_TEXT, C2D_AlignLeft, "Face buttons");
+	text(lx, ROW_Y(6) + ty, 0.5f, C_TEXT, C2D_AlignLeft, "Buttons on the PC");
 	text(lx + 92, ROW_Y(2) + ty + 2, 0.38f, C_DIM, C2D_AlignLeft, "%.1f Mbps", settings_bitrate_kbps() / 1000.0f);
 	draw_buttons();
 }

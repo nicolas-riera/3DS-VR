@@ -39,7 +39,7 @@ console                                         PC
   tangents covered by each encoded eye. `configId` changes whenever any of these change. The console then drops
   in-flight frames of the old config and waits for a key frame.
 - **SETTINGS** is what the console wants: stereo on/off (3D setting and slider), frame rate, bitrate, the visible
-  field of view and the player's height. The PC applies changes 250 ms after the last one, so that holding + / −
+  field of view, the player's height and what the buttons are on the PC (Xbox controller or VR controllers). The PC applies changes 250 ms after the last one, so that holding + / −
   does not restart the encoder at every step.
 
 ## Video

@@ -40,7 +40,9 @@ public:
 	using PoseCallback = std::function<void(const Quat& q)>;
 	// The console's buttons for SteamVR; connected = false when the session
 	// ends. dashboard: SteamVR's dashboard is open, so the buttons drive it.
-	using PadCallback = std::function<void(const Vr3dsGamepad& pad, bool connected, bool dashboard)>;
+	// controls: Vr3dsControls, what the console wants its buttons to be.
+	using PadCallback =
+		std::function<void(const Vr3dsGamepad& pad, bool connected, bool dashboard, uint8_t controls)>;
 
 	bool Start(Compositor* compositor, PoseCallback onPose, PadCallback onPad);
 	void Stop();
@@ -103,6 +105,7 @@ private:
 	PadCallback m_onPad;
 	std::atomic<bool> m_dashboardOpen{false};
 	bool m_guideDown = false; // network thread
+	uint8_t m_padControls = VR3DS_CONTROLS_XBOX; // network thread: the Xbox controller is plugged in for XBOX
 	std::atomic<bool> m_running{false};
 	std::thread m_netThread, m_encodeThread;
 	SOCKET m_sock = INVALID_SOCKET;

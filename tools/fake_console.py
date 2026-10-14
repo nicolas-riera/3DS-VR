@@ -28,7 +28,7 @@ MODELS = {"3ds": 0, "3dsxl": 1, "new3ds": 2, "2ds": 3, "new3dsxl": 4, "new2dsxl"
 CAP_HW_H264, CAP_STEREO = 1, 2
 
 HEADER = struct.Struct("<IBBH")
-SETTINGS_S = struct.Struct("<BBHffHH")  # stereo, fps, kbps, tanX, tanY, heightCm, reserved
+SETTINGS_S = struct.Struct("<BBHffHBB")  # stereo, fps, kbps, tanX, tanY, heightCm, controls, reserved
 HELLO_S = struct.Struct("<QQBB3sB32s")
 PAIR_S = struct.Struct("<BBH32s")
 CONFIG_S = struct.Struct("<IHBBHHBBHff32s")
@@ -74,7 +74,7 @@ def main():
         open(ident, "w").write("%016x %016x\n" % (cid, token))
 
     tan_x = math.tan(math.radians(args.fov) / 2)
-    settings = SETTINGS_S.pack(1 if (args.stereo and has_3d) else 0, fps, args.kbps, tan_x, tan_x * 0.6, args.height, 0)
+    settings = SETTINGS_S.pack(1 if (args.stereo and has_3d) else 0, fps, args.kbps, tan_x, tan_x * 0.6, args.height, 0, 0)
     hello = header(HELLO) + HELLO_S.pack(cid, token, model, caps, bytes([1, 0, 0]), 0,
                                          args.name.encode()[:31].ljust(32, b"\0")) + settings
 

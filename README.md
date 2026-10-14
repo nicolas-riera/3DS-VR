@@ -32,6 +32,8 @@ you want it. Its gyroscope tracks your head (3DoF), and its buttons are your Xbo
 - **PC sound on the console** (speakers or headphones). There is no microphone and no virtual audio cable.
 - **Xbox 360 controller.** All of the console's buttons, sticks and triggers. On the Old 3DS family the touch
   screen adds a right stick and ZL/ZR. On every model the touch screen has L3, R3 and the Guide button.
+- **VR controllers mode.** For games that need motion controllers: two Quest 2 controllers held in front of the
+  view, turning with your head, with the console's buttons spread over them.
 - **SteamVR menu with the console.** Guide opens SteamVR's dashboard; aim with your head and click with A.
 - **Model and battery passthrough.** SteamVR shows your exact console model and its status icons, and the
   console's battery level.
@@ -105,6 +107,25 @@ you opened the app, click **Restart SteamVR**.
 moves between items and the C-Stick (or the touch-screen stick) scrolls. While it is open, the game gets no input
 from the console.
 
+### VR controllers mode
+
+Some games need motion controllers. Set **Buttons on the PC** to **VR controllers** and the console becomes two
+Quest 2 (Touch) controllers, which every SteamVR game knows. They are held low in front of you and turn with your
+head, so you aim by looking. The Xbox controller is unplugged meanwhile.
+
+| 3DS | Left controller | Right controller |
+|---|---|---|
+| Circle Pad (or the D-Pad) | stick | |
+| C-Stick (Old 3DS family: touch-screen stick) | | stick |
+| ZL / ZR | trigger | trigger |
+| L / R | grip | grip |
+| Y / X (B / A with *Same letters*) | X / Y | |
+| B / A (A / B with *Same letters*) | | A / B |
+| START | menu | |
+| touch screen: L3 / R3 | stick click | stick click |
+
+The buttons can be remapped per game in SteamVR's controller bindings, like real Touch controllers.
+
 ### Console settings
 
 Open them with **Settings** (or **Menu** on the Old 3DS family) on the touch screen.
@@ -117,6 +138,7 @@ Open them with **Settings** (or **Menu** on the Old 3DS family) on the touch scr
 | Frame rate | 30 or 60 fps (New 3DS family), 20 or 30 fps (Old 3DS family) |
 | Stereoscopic 3D | streams both eyes when the 3D slider is up |
 | Face buttons | Xbox positions or matching letters |
+| Buttons on the PC | an Xbox controller, or two VR controllers (see below) |
 | Forget PCs | every PC will have to pair again |
 
 Settings are saved in `sdmc:/3ds/3DS-VR/settings.ini`.

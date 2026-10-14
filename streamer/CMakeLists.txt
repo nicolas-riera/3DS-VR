@@ -47,6 +47,7 @@ add_library(driver_3dsvr SHARED
 	driver/src/driver_main.cpp
 	driver/src/hmd.cpp
 	driver/src/controls.cpp
+	driver/src/hands.cpp
 	driver/src/compositor.cpp
 	driver/src/streamer.cpp
 	driver/src/encoder_h264.cpp
