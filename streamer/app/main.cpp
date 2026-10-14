@@ -547,6 +547,8 @@ static void Paint(HDC hdc, const RECT& rc) {
 		SetupRow(g, y, kRed, L"Xbox controller", L"The gamepad driver does not start.", padBtn, padLabel);
 	else if (!g_padRunning && !g_vigemOk)
 		SetupRow(g, y, kOrange, L"Xbox controller", L"Needs the 3DS VR gamepad driver.", BTN_PAD, L"Install");
+	else if (streaming && g_status.gamepad == IPC_PAD_VR)
+		SetupRow(g, y, kGreen, L"Xbox controller", L"Off: the console is two VR controllers.", padBtn, padLabel);
 	else if (streaming && g_status.gamepad == IPC_PAD_OK)
 		SetupRow(g, y, kGreen, L"Xbox controller", L"Connected as an Xbox 360 controller.", padBtn, padLabel);
 	else if (streaming && g_status.gamepad != IPC_PAD_OK)

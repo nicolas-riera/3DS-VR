@@ -27,6 +27,7 @@ enum IpcGamepad : uint8_t {
 	IPC_PAD_OK = 1,
 	IPC_PAD_NO_DRIVER = 2, // neither the 3DS VR gamepad driver nor ViGEmBus
 	IPC_PAD_ERROR = 3,
+	IPC_PAD_VR = 4, // the console is two VR controllers instead
 };
 
 #pragma pack(push, 1)

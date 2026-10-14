@@ -105,7 +105,7 @@ private:
 	PadCallback m_onPad;
 	std::atomic<bool> m_dashboardOpen{false};
 	bool m_guideDown = false; // network thread
-	uint8_t m_padControls = VR3DS_CONTROLS_XBOX; // network thread: the Xbox controller is plugged in for XBOX
+	std::atomic<uint8_t> m_padControls{VR3DS_CONTROLS_XBOX}; // the Xbox controller is plugged in for XBOX
 	std::atomic<bool> m_running{false};
 	std::thread m_netThread, m_encodeThread;
 	SOCKET m_sock = INVALID_SOCKET;

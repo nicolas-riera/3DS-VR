@@ -383,6 +383,7 @@ void Streamer::OnPacket(const uint8_t* data, int len, const sockaddr_in& from) {
 			m_padControls = controls;
 			if (controls == VR3DS_CONTROLS_VR) m_gamepad.Disconnect();
 			else m_gamepad.Connect();
+			SendStatus();
 		}
 		if (m_onPad) m_onPad(t->pad, true, m_dashboardOpen, controls);
 		{
@@ -499,7 +500,7 @@ void Streamer::SendStatus() {
 		st.sentMbps = m_sentMbps;
 		CopyName(st.encoder, sizeof(st.encoder), m_encoderName);
 	}
-	st.gamepad = m_gamepad.Status();
+	st.gamepad = m_padControls == VR3DS_CONTROLS_VR ? IPC_PAD_VR : m_gamepad.Status();
 	st.audio = m_audio.Running() ? 1 : 0;
 	st.pairedCount = (uint32_t)m_pairing.Count();
 
