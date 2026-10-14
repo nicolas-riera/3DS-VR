@@ -1,18 +1,18 @@
 # 3DS VR
 
 > **This project was made entirely by an AI** (Claude, by Anthropic): the code, assets, build setup and documentation.
-> **It has not been tested on real hardware yet.** Both halves build, but nobody has streamed a game to a 3DS with this
-> version. Expect rough edges.
+> **It has only been tested on a New Nintendo 3DS XL.** The other models (New 3DS, New 2DS XL, and the Old 3DS
+> family with its software JPEG decoding) should work but nobody has tried them. Expect rough edges.
 
 Use a Nintendo 3DS as a (very) small SteamVR headset. The 3DS shows the game on its top screen, in stereoscopic 3D if
-you want it. Its gyroscope tracks your head (3DoF), and its buttons are your Xbox controller.
+you want it. Its gyroscope tracks your head (3DoF), and its buttons are your Xbox controller, or two VR controllers.
 
 ```
  PC                                                  Nintendo 3DS
  ┌──────────────────────────────┐   Wi-Fi (UDP)   ┌─────────────────────────────┐
  │ SteamVR ── 3DS VR driver     │ ─ video, sound ▶│ decoder ─ reprojection ─ 3D │
  │   virtual headset, encoder,  │                 │ top screen (2D or 3D)       │
- │   audio capture, Xbox pad    │ ◀ head, buttons │ gyroscope, buttons, touch   │
+ │   audio capture, controllers │ ◀ head, buttons │ gyroscope, buttons, touch   │
  │ 3DS VR app (setup, pairing)  │                 │                             │
  └──────────────────────────────┘                 └─────────────────────────────┘
 ```
@@ -30,11 +30,9 @@ you want it. Its gyroscope tracks your head (3DoF), and its buttons are your Xbo
 - **3DoF head tracking** from the gyroscope and accelerometer (same filter as
   [SlimeVR 3DS](https://github.com/nicolas-riera/SlimeVR-3DS)), with a recenter button.
 - **PC sound on the console** (speakers or headphones). There is no microphone and no virtual audio cable.
-- **Xbox 360 controller.** All of the console's buttons, sticks and triggers. On the Old 3DS family the touch
-  screen adds a right stick and ZL/ZR. On every model the touch screen has L3, R3 and the Guide button.
-- **VR controllers mode.** For games that need motion controllers: two Quest 2 controllers held in front of the
-  view, turning with your head, with the console's buttons spread over them.
-- **SteamVR menu with the console.** Guide opens SteamVR's dashboard; aim with your head and click with A.
+- **Two ways to use the buttons.** An Xbox 360 controller (the default), or two VR controllers for games that need
+  motion controllers. On the Old 3DS family the touch screen adds a right stick and ZL/ZR.
+- **SteamVR menu with the console.** Guide (touch screen) opens SteamVR's dashboard; aim with your head and click.
 - **Model and battery passthrough.** SteamVR shows your exact console model and its status icons, and the
   console's battery level.
 - **No configuration.** Run the app on the PC and the app on the 3DS, check the pairing code once, play.
@@ -43,6 +41,7 @@ you want it. Its gyroscope tracks your head (3DoF), and its buttons are your Xbo
 
 | | New 3DS, New 3DS XL | New 2DS XL | 3DS, 3DS XL | 2DS |
 |---|---|---|---|---|
+| Tested | New 3DS XL only | no | no | no |
 | Video | H.264, 512×256 per eye, up to 60 fps | same | JPEG, 384×192 per eye, up to 30 fps | same |
 | Stereoscopic 3D | yes (on by default) | no | yes (off by default) | no |
 | Right stick | C-Stick | C-Stick | touch screen | touch screen |
@@ -59,20 +58,21 @@ you want it. Its gyroscope tracks your head (3DoF), and its buttons are your Xbo
 
 ## Install
 
-Builds go in [Releases](https://github.com/nicolas-riera/3DS-VR/releases) when there are some. Until then, see
+Download the latest [release](https://github.com/nicolas-riera/3DS-VR/releases/latest), or see
 [Building](#building).
 
 **Console:** copy `3DS-VR.3dsx` to `sdmc:/3ds/` and start it from the Homebrew Launcher. Or install `3DS-VR.cia`
 with FBI to get a HOME Menu icon.
 
-**PC:** unzip the `3DS VR` folder anywhere and run **`3DS VR.exe`**. On the first launch it:
+**PC:** unzip `3DS-VR-PC.zip` anywhere (keep the folder together) and run **`3DS VR.exe`**. It sets everything up
+itself, one click at a time:
 
-1. registers its SteamVR driver (the `driver\3dsvr` folder next to it),
-2. offers to open UDP port 39630 in the Windows Firewall (one click, one admin prompt),
-3. offers to install the 3DS VR gamepad driver, the driver behind the virtual Xbox controller (one click, one admin
+1. it registers its SteamVR driver (the `driver\3dsvr` folder next to it),
+2. it offers to open UDP port 39630 in the Windows Firewall (one click, one admin prompt),
+3. it offers to install the 3DS VR gamepad driver, the driver behind the virtual Xbox controller (one click, one admin
    prompt, see [Gamepad driver](#gamepad-driver)). If [ViGEmBus](https://github.com/nefarius/ViGEmBus) is already
    installed, it works with that instead and there is nothing to install,
-4. starts SteamVR.
+4. it starts SteamVR.
 
 The app registers the driver with SteamVR when it starts and removes it when it closes, so without the app SteamVR
 behaves as if 3DS VR was not installed and your other headsets work as usual. If SteamVR was already running when
@@ -87,61 +87,120 @@ you opened the app, click **Restart SteamVR**.
 4. Hold the console in front of your face and look straight ahead. The view recenters when the stream starts. Press
    **SELECT + START** or **Recenter** on the touch screen whenever you want.
 
-### Controls
+### The PC app
+
+The window lists what 3DS VR needs, each with its state and, when something is missing, the button that fixes it.
+
+| Row | What it says |
+|---|---|
+| SteamVR | Running with the 3DS VR headset, starting, not running, or running without 3DS VR (**Restart SteamVR**). |
+| Network | Whether the firewall lets consoles in (**Allow** adds the rule). |
+| Xbox controller | Whether the virtual controller is ready, connected, or off because the console is in VR controllers mode. **Install** / **Remove** manage the gamepad driver (**Remove** needs a second click). |
+| Sound | Whether the PC's sound is captured for the console. |
+
+While a console streams, the top card shows its model, nickname and battery, the stream format (2D or 3D, size per
+eye, codec, frame rate), the frame rate and bitrate actually sent, the latency (from rendering on the PC to the
+picture on the console's screen) and the encoder in use. When a new console asks to pair, the card shows its code
+with **Pair** and **Refuse**. **Forget all** removes every paired console (click twice).
+
+### The console app
+
+Before streaming, the top screen shows what the console is doing (connecting to Wi-Fi, looking for the PC, pairing)
+and the bottom screen has **Settings** and **Exit**. The console takes the Wi-Fi for itself while the app runs
+(StreetPass and SpotPass are paused) and reconnects to your saved access point by itself if the connection drops.
+
+While streaming, the touch screen has the buttons the console does not have:
+
+| New 3DS family | Old 3DS family |
+|---|---|
+| **L3**, **Guide**, **R3** (top row), **Recenter**, **Settings** | **ZL** and **ZR** (top corners), **L3**, **R3**, **Guide**, **Recenter**, **Menu** (left side), and a **stick** on the right side that you drag with the stylus or a thumb (the right stick) |
+
+**L3**, **R3**, **Guide**, **ZL**, **ZR** and the stick are held as long as you touch them. While the settings are
+open the console sends no buttons to the PC.
+
+The **3D slider** does two things: anywhere above 0 (with *Stereoscopic 3D* on) the stream carries both eyes, and its
+position sets the depth (the distance between the two eyes in SteamVR, up to 64 mm). At 0 the stream switches to one
+centred view after half a second, which halves the picture the console has to decode.
+
+### Xbox controller mode
+
+The default. The console is an Xbox 360 controller for the PC: games that play with a controller see it like any
+other, while a console is streaming.
 
 | 3DS | Xbox controller |
 |---|---|
-| B / A / Y / X | A / B / X / Y (Xbox positions). The *Face buttons* setting can match the letters instead. |
+| B / A / Y / X | A / B / X / Y (same positions). With *Face buttons* set to *Same letters*: A / B / X / Y. |
 | L / R | LB / RB |
-| ZL / ZR (New 3DS family) | LT / RT |
+| ZL / ZR (Old 3DS family: touch screen) | LT / RT |
 | Circle Pad | left stick |
-| C-Stick (New 3DS family) | right stick |
+| C-Stick (Old 3DS family: touch-screen stick) | right stick |
 | D-Pad | D-Pad |
 | START / SELECT | Start / Back |
 | touch screen: L3, R3 | L3, R3 |
-| touch screen: Guide | opens or closes SteamVR's dashboard (not sent to the game) |
-| touch screen, Old 3DS family: stick, ZL, ZR | right stick, LT, RT |
+| touch screen: Guide | opens or closes SteamVR's dashboard (not sent to the game, where it would open the Xbox Game Bar) |
 | SELECT + START, or touch screen: Recenter | recenter the view (not sent to the game) |
 
-**In SteamVR's dashboard** the pointer follows your head. A or ZR clicks, ZL right-clicks, B goes back, the D-Pad
-moves between items and the C-Stick (or the touch-screen stick) scrolls. While it is open, the game gets no input
-from the console.
+### SteamVR's dashboard
+
+**Guide** on the touch screen opens and closes SteamVR's dashboard in both modes. The pointer follows your head.
+
+| 3DS | In the dashboard (Xbox controller mode) |
+|---|---|
+| A or ZR | click |
+| ZL | right-click |
+| B | back |
+| Y | home |
+| D-Pad | move between items |
+| C-Stick (or the touch-screen stick) | scroll |
+
+While the dashboard is open the game gets no input from the console. In VR controllers mode the dashboard is used
+like with real controllers: the right controller points where you look, and its trigger (ZR) clicks.
 
 ### VR controllers mode
 
-Some games need motion controllers. Set **Buttons on the PC** to **VR controllers** and the console becomes two
-Quest 2 (Touch) controllers, which every SteamVR game knows. They are held low in front of you and turn with your
-head, so you aim by looking. The Xbox controller is unplugged meanwhile.
+For games that need motion controllers. Set **Buttons on the PC** to **VR controllers** in the console settings (it
+switches at once, even while streaming): the console becomes two Quest 2 (Touch) controllers, which every SteamVR
+game has bindings for. The Xbox controller is unplugged meanwhile, so games do not get every button twice.
+
+The two controllers have no tracking of their own: they are held low in front of you (12 cm to each side, 14 cm
+down, 32 cm ahead of your eyes) and turn with your head, both pointing where the console looks. So you aim with your
+head, and the game sees your hands follow your view.
 
 | 3DS | Left controller | Right controller |
 |---|---|---|
-| Circle Pad (or the D-Pad) | stick | |
+| Circle Pad | stick | |
+| D-Pad (when the Circle Pad is centred) | stick (full tilt) | |
 | C-Stick (Old 3DS family: touch-screen stick) | | stick |
-| ZL / ZR | trigger | trigger |
+| ZL / ZR (Old 3DS family: touch screen) | trigger | trigger |
 | L / R | grip | grip |
-| Y / X (B / A with *Same letters*) | X / Y | |
-| B / A (A / B with *Same letters*) | | A / B |
+| Y / X | X / Y | |
+| B / A | | A / B |
 | START | menu | |
 | touch screen: L3 / R3 | stick click | stick click |
+| touch screen: Guide | SteamVR dashboard | SteamVR dashboard |
 
-The buttons can be remapped per game in SteamVR's controller bindings, like real Touch controllers.
+With *Face buttons* set to *Same letters*, A and B swap (3DS A is Touch A) and so do X and Y. SELECT has no
+controller button (it is still half of SELECT + START, which recenters). The buttons can be remapped per game in
+SteamVR's controller bindings (*Settings* → *Controllers* → *Manage controller bindings*), like real Touch
+controllers. The hands do not move their fingers: there is no finger tracking.
 
 ### Console settings
 
-Open them with **Settings** (or **Menu** on the Old 3DS family) on the touch screen.
+Open them with **Settings** (or **Menu** on the Old 3DS family) on the touch screen. Hold **+** or **−** to change
+a value quickly.
 
-| Setting | What it does |
-|---|---|
-| Field of view | how wide the view is on the top screen (50° to 110°, 80° by default) |
-| Your height | puts your head at the right height in SteamVR (120 to 220 cm). Lower it if you play seated. |
-| Video quality | the bitrate (Low, Medium, High, Ultra). Lower it if the picture freezes or breaks up. |
-| Frame rate | 30 or 60 fps (New 3DS family), 20 or 30 fps (Old 3DS family) |
-| Stereoscopic 3D | streams both eyes when the 3D slider is up |
-| Face buttons | Xbox positions or matching letters |
-| Buttons on the PC | an Xbox controller, or two VR controllers (see below) |
-| Forget PCs | every PC will have to pair again |
+| Setting | Values | What it does |
+|---|---|---|
+| Field of view | 50° to 110°, 80° by default | How wide the game's view is on the top screen. Wider shows more but makes everything smaller. The PC renders a little more than this, so that reprojection has picture to show at the edges. |
+| Your height | 120 to 220 cm (with feet and inches), 170 cm by default | Puts your eyes at the right height in SteamVR. Lower it if you play seated. |
+| Video quality | Low, Medium (default), High, Ultra | The bitrate, shown next to it: 2, 3.5, 5 or 7 Mbps for H.264 (New 3DS family), 1.5, 2.5, 3.5 or 5 Mbps for JPEG (Old 3DS family). Lower it if the picture freezes or breaks up. |
+| Frame rate | 30 or 60 fps (New 3DS family, 60 by default), 20 or 30 fps (Old 3DS family, 30 by default) | How many pictures per second the PC sends. |
+| Stereoscopic 3D | On, Off (models with a 3D screen) | Whether the 3D slider can turn the stream to 3D. On by default on the New 3DS family, off on the Old 3DS family (software decoding of two eyes is slow). |
+| Face buttons | Xbox positions (default), Same letters | Xbox positions maps by position (3DS B, at the bottom, is Xbox A). Same letters maps by name (3DS A is Xbox A). |
+| Buttons on the PC | Xbox controller (default), VR controllers | See [Xbox controller mode](#xbox-controller-mode) and [VR controllers mode](#vr-controllers-mode). |
 
-Settings are saved in `sdmc:/3ds/3DS-VR/settings.ini`.
+At the bottom: **Back** closes the settings, **Forget PCs** (tap twice) makes every PC pair again, and **Exit** quits
+the app. Settings are saved in `sdmc:/3ds/3DS-VR/settings.ini` a second after the last change.
 
 ## How it works
 
@@ -166,6 +225,10 @@ Settings are saved in `sdmc:/3ds/3DS-VR/settings.ini`.
   buttons as a SteamVR device of the `gamepad` type, which the dashboard knows how to use (it aims with the head).
   The rest of the time that device is disconnected, so games do not take it for a tracker or get every button
   twice. The bindings are in `resources/input/`.
+- **VR controllers.** Two more SteamVR devices, a left and a right Quest 2 (Touch) controller: Touch's controller type,
+  input profile and render model are SteamVR's own (from its Oculus driver), so games use their Touch bindings. Each
+  pose is the head's pose plus a fixed offset, tilted up by the 38° between the Touch model's raw pose and its aim
+  pose. They are only connected in VR controllers mode.
 - **Model and battery.** The console's model becomes the headset's model number, which selects that console's
   render model and status icons. The icons follow SteamVR's own style (see `driver.vrresources`). The battery
   level is reported as the headset's battery.
@@ -232,8 +295,11 @@ mainly [OpenXinput](https://github.com/Nemirtingas/OpenXinput). The driver is wr
 | The gamepad driver does not start | Look at *3DS VR Gamepad* in Device Manager (System devices) and at `%APPDATA%\3DS VR\gamepad_setup.log`. Some security policies only allow drivers signed by Microsoft (Smart App Control, S mode, company policies): use ViGEmBus there. Click **Remove**, then **Install** to start over. |
 | "Restart Windows to finish" | Removing or updating the driver while SteamVR uses it needs a restart. Close SteamVR first to avoid it. |
 | The view drifts sideways | Without a magnetometer the heading drifts slowly: recenter. |
+| A game ignores the console's buttons | Games that only take motion controllers need *Buttons on the PC* set to *VR controllers*; games that only take a gamepad need *Xbox controller*. |
+| SteamVR asks for Room Setup | It should not: the driver gives SteamVR its own play area. Restart SteamVR with the app running. |
 
-Logs: `%APPDATA%\3DS VR\driver.log` and `gamepad_setup.log` on the PC, and SteamVR's `vrserver.txt`.
+Logs: `%APPDATA%\3DS VR\driver.log` (and `driver.previous.log`, the session before) and `gamepad_setup.log`
+on the PC, and SteamVR's `vrserver.txt`.
 
 ## Building
 
