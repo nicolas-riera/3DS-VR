@@ -236,16 +236,14 @@ ID3D11Texture2D* Compositor::SyncTexture(vr::SharedTextureHandle_t h) {
 }
 
 bool Compositor::EnsureOutput(const OutputFormat& f) {
-	if (m_hasOutput && f.eyeWidth == m_outFormat.eyeWidth && f.eyeHeight == m_outFormat.eyeHeight &&
-		f.stereo == m_outFormat.stereo)
-		return true;
+	if (m_hasOutput && f.eyeWidth == m_outFormat.eyeWidth && f.height == m_outFormat.height) return true;
 	// wait until the encoder is done with the old pictures
 	for (bool busy : m_slotBusy)
 		if (busy) return false;
 
 	D3D11_TEXTURE2D_DESC td = {};
 	td.Width = f.eyeWidth;
-	td.Height = f.eyeHeight * (f.stereo ? 2 : 1);
+	td.Height = f.height;
 	td.MipLevels = 1;
 	td.ArraySize = 1;
 	td.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -266,7 +264,7 @@ bool Compositor::EnsureOutput(const OutputFormat& f) {
 	}
 	m_outFormat = f;
 	m_hasOutput = true;
-	Log("Compositor output: %ux%u (%s)", td.Width, td.Height, f.stereo ? "stereo" : "mono");
+	Log("Compositor output: %ux%u", td.Width, td.Height);
 	return true;
 }
 

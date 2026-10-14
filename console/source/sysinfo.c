@@ -69,13 +69,25 @@ static void load_name(void) {
 	strcpy(g_console.name, "Nintendo 3DS");
 	if (R_FAILED(CFGU_GetConfigInfoBlk2(0x1C, 0x000A0000, utf16))) return;
 	utf16[0x1C / 2] = 0;
-	u8 out[sizeof(g_console.name)];
-	memset(out, 0, sizeof(out));
-	ssize_t n = utf16_to_utf8(out, utf16, sizeof(out) - 1);
-	if (n > 0) {
-		out[n < (ssize_t)sizeof(out) ? n : (ssize_t)sizeof(out) - 1] = 0;
-		strcpy(g_console.name, (const char*)out);
+	/* UTF-8, never cut inside a character, without the 3DS keyboard's own
+	   symbols (private use area): no other font has them */
+	char out[sizeof(g_console.name)];
+	size_t len = 0;
+	for (int i = 0; i < 0x1C / 2 && utf16[i]; i++) {
+		u32 c = utf16[i];
+		if (c >= 0xD800 && c <= 0xDBFF && utf16[i + 1] >= 0xDC00 && utf16[i + 1] <= 0xDFFF) {
+			c = 0x10000 + ((c - 0xD800) << 10) + (utf16[i + 1] - 0xDC00);
+			i++;
+		}
+		if ((c >= 0xD800 && c <= 0xDFFF) || (c >= 0xE000 && c <= 0xF8FF) || c < 0x20) continue;
+		u8 enc[4];
+		ssize_t n = encode_utf8(enc, c);
+		if (n <= 0 || len + (size_t)n >= sizeof(out)) break;
+		memcpy(out + len, enc, (size_t)n);
+		len += (size_t)n;
 	}
+	out[len] = 0;
+	if (len) strcpy(g_console.name, out);
 }
 
 void sysinfo_init(void) {

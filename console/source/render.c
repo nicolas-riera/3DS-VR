@@ -108,10 +108,10 @@ static void bind_state(C3D_Tex* tex) {
 	C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
 	for (int i = 1; i < 6; i++) C3D_TexEnvInit(C3D_GetTexEnv(i));
 
+	/* blending is left as is: the picture is opaque, and C2D_Prepare does
+	   not restore it for the text drawn afterwards */
 	C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_COLOR);
 	C3D_CullFace(GPU_CULL_NONE);
-	C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
-	C3D_AlphaTest(false, GPU_ALWAYS, 0);
 }
 
 void render_video(const VideoView* v, quat current, float screenTanX, float screenTanY) {

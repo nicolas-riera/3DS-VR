@@ -3,6 +3,7 @@
 #include <windows.h>
 
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <string>
 
@@ -18,6 +19,29 @@ static constexpr float kNeckUp = 0.11f, kNeckForward = 0.08f;
 static const char* const kModelSlugs[VR3DS_MODEL_COUNT] = {"3ds", "3dsxl", "new3ds", "2ds", "new3dsxl", "new2dsxl"};
 static const char* const kModelNames[VR3DS_MODEL_COUNT] = {
 	"Nintendo 3DS", "Nintendo 3DS XL", "New Nintendo 3DS", "Nintendo 2DS", "New Nintendo 3DS XL", "New Nintendo 2DS XL"};
+
+// Our own tracking universe, "3DSVR" in ASCII.
+static constexpr uint64_t kUniverseId = 0x3344535652ull;
+
+// The universe's play area, given to SteamVR so that it never asks for Room
+// Setup: there is no room to set up with a 3DoF headset. 2 x 2 m, hidden.
+static std::string ChaperoneJson(float eyeHeight) {
+	static const float c[4][2] = {{-1, -1}, {1, -1}, {1, 1}, {-1, 1}};
+	std::string walls;
+	char buf[256];
+	for (int i = 0; i < 4; i++) {
+		const float *a = c[i], *b = c[(i + 1) % 4];
+		snprintf(buf, sizeof(buf), "%s[[%g,0,%g],[%g,0,%g],[%g,2.5,%g],[%g,2.5,%g]]", i ? "," : "", a[0], a[1], b[0],
+				 b[1], b[0], b[1], a[0], a[1]);
+		walls += buf;
+	}
+	snprintf(buf, sizeof(buf),
+			 "],\"play_area\":[2,2],\"standing\":{\"translation\":[0,0,0],\"yaw\":0},"
+			 "\"seated\":{\"translation\":[0,%.3f,0],\"yaw\":0}}]}",
+			 eyeHeight);
+	return "{\"jsonid\":\"chaperone_info\",\"version\":5,\"universes\":[{\"universeID\":\"" +
+		   std::to_string(kUniverseId) + "\",\"collision_bounds\":[" + walls + buf;
+}
 
 static HmdMatrix34_t Translation(float x) {
 	HmdMatrix34_t m = {};
@@ -54,6 +78,10 @@ EVRInitError Hmd::Activate(uint32_t unObjectId) {
 	p->SetBoolProperty(m_props, Prop_DeviceProvidesBatteryStatus_Bool, true);
 	p->SetFloatProperty(m_props, Prop_DeviceBatteryPercentage_Float, 1.0f);
 	p->SetBoolProperty(m_props, Prop_DeviceIsCharging_Bool, false);
+
+	p->SetUint64Property(m_props, Prop_CurrentUniverseId_Uint64, kUniverseId);
+	p->SetStringProperty(m_props, Prop_DriverProvidedChaperoneJson_String, ChaperoneJson(m_eyeHeight).c_str());
+	p->SetBoolProperty(m_props, Prop_DriverProvidedChaperoneVisibility_Bool, false);
 
 	{
 		std::lock_guard<std::mutex> lock(m_poseMutex);
@@ -177,8 +205,9 @@ void Hmd::ApplyView(const SessionView& v) {
 	}
 	if (std::fabs(v.ipd - m_appliedIpd) > 0.0005f) {
 		m_appliedIpd = v.ipd;
+		// Only the eye views move: the IPD shown by SteamVR stays the user's
+		// (0 mm in 2D or a slider-scaled value would look broken).
 		VRServerDriverHost()->SetDisplayEyeToHead(id, Translation(-v.ipd / 2), Translation(v.ipd / 2));
-		p->SetFloatProperty(m_props, Prop_UserIpdMeters_Float, v.ipd);
 	}
 	bool heightChanged;
 	{
@@ -186,6 +215,9 @@ void Hmd::ApplyView(const SessionView& v) {
 		heightChanged = std::fabs(v.eyeHeight - m_eyeHeight) > 0.001f;
 		m_eyeHeight = v.eyeHeight;
 	}
+	// seated apps start at the head's height
+	if (heightChanged)
+		p->SetStringProperty(m_props, Prop_DriverProvidedChaperoneJson_String, ChaperoneJson(v.eyeHeight).c_str());
 	if (heightChanged || v.connected != m_appliedConnected) {
 		Quat q;
 		{

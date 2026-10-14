@@ -39,9 +39,13 @@ static std::string FixedName(const char* src, size_t n) {
 	return std::string(src, strnlen(src, n));
 }
 
+// UTF-8 names are cut between characters, never inside one.
 static void CopyName(char* dst, size_t n, const std::string& s) {
 	memset(dst, 0, n);
-	memcpy(dst, s.data(), std::min(n - 1, s.size()));
+	size_t len = std::min(n - 1, s.size());
+	if (len < s.size())
+		while (len > 0 && ((uint8_t)s[len] & 0xC0) == 0x80) len--;
+	memcpy(dst, s.data(), len);
 }
 
 static bool SameHost(const sockaddr_in& a, const sockaddr_in& b) {
@@ -56,9 +60,13 @@ bool Streamer::Start(Compositor* compositor, PoseCallback onPose) {
 
 	WSADATA wsa;
 	WSAStartup(MAKEWORD(2, 2), &wsa);
-	char name[MAX_COMPUTERNAME_LENGTH + 1] = {};
-	DWORD n = sizeof(name);
-	m_pcName = GetComputerNameA(name, &n) ? name : "PC";
+	wchar_t name[MAX_COMPUTERNAME_LENGTH + 1] = {};
+	DWORD n = MAX_COMPUTERNAME_LENGTH + 1;
+	char utf8[64] = {};
+	if (GetComputerNameW(name, &n) && WideCharToMultiByte(CP_UTF8, 0, name, -1, utf8, sizeof(utf8), nullptr, nullptr))
+		m_pcName = utf8;
+	else
+		m_pcName = "PC";
 	m_pairing.Load();
 
 	m_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -138,7 +146,8 @@ SessionView Streamer::View() {
 		v.encTanX = m_s.config.encTanX;
 		v.encTanY = m_s.config.encTanY;
 	}
-	// the 3D slider sets the stereo strength; whole millimetres avoid needless updates
+	// eye separation: the 3D slider sets the depth, 2D shows one centred view;
+	// whole millimetres avoid needless updates
 	float ipd = m_s.config.stereo ? kMaxIpd * m_s.stereoStrength / 255.0f : 0.0f;
 	v.ipd = std::round(ipd * 1000.0f) / 1000.0f;
 	int height = m_s.wanted.heightCm ? m_s.wanted.heightCm : 170;
@@ -153,6 +162,7 @@ OutputFormat Streamer::Format() {
 		f.eyeWidth = m_s.config.eyeWidth;
 		f.eyeHeight = m_s.config.eyeHeight;
 		f.stereo = m_s.config.stereo != 0;
+		f.height = (uint16_t)vr3ds_picture_height(m_s.config.codec, m_s.config.stereo, m_s.config.eyeHeight);
 		f.configId = m_s.config.configId;
 	}
 	return f;
@@ -640,12 +650,11 @@ void Streamer::EncodeThread() {
 			continue;
 		}
 
-		bool reinit = !m_encoder || m_encCodec != cfg.codec || m_encW != cfg.eyeWidth ||
-					  m_encH != cfg.eyeHeight * (cfg.stereo ? 2 : 1) || m_encFps != cfg.fps ||
-					  m_encKbps != cfg.bitrateKbps;
+		int h = vr3ds_picture_height(cfg.codec, cfg.stereo, cfg.eyeHeight);
+		bool reinit = !m_encoder || m_encCodec != cfg.codec || m_encW != cfg.eyeWidth || m_encH != h ||
+					  m_encFps != cfg.fps || m_encKbps != cfg.bitrateKbps;
 		if (reinit) {
 			m_encoder = cfg.codec == VR3DS_CODEC_H264 ? CreateH264Encoder() : CreateJpegEncoder();
-			int h = cfg.eyeHeight * (cfg.stereo ? 2 : 1);
 			if (!m_encoder->Init(cfg.eyeWidth, h, cfg.fps, cfg.bitrateKbps)) {
 				Log("Encoder initialisation failed");
 				m_encoder.reset();

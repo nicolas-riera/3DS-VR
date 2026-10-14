@@ -10,7 +10,7 @@
 #include "sysinfo.h"
 
 #define TEX_TRANSFER_FLAGS                                                                          \
-	(GX_TRANSFER_FLIP_VERT(1) | GX_TRANSFER_OUT_TILED(1) | GX_TRANSFER_RAW_COPY(0) |                \
+	(GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(1) | GX_TRANSFER_RAW_COPY(0) |                \
 	 GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGB565) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB565) | \
 	 GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO))
 
@@ -216,7 +216,7 @@ static void reconfigure(const Vr3dsConfig* cfg) {
 	s_haveLast = false;
 	s_needKey = cfg->codec == VR3DS_CODEC_H264;
 	if (cfg->codec == VR3DS_CODEC_H264) {
-		mvd_setup(cfg->eyeWidth, cfg->eyeHeight * (cfg->stereo ? 2 : 1));
+		mvd_setup(cfg->eyeWidth, (u16)vr3ds_picture_height(cfg->codec, cfg->stereo, cfg->eyeHeight));
 		/* MVD shows grey until it gets an IDR frame */
 		net_request_keyframe(cfg->configId);
 	}
@@ -316,7 +316,7 @@ bool video_view(VideoView* out) {
 	out->encTanX = s_cfg.encTanX;
 	out->encTanY = s_cfg.encTanY;
 	out->u1 = ew / ts;
-	/* after the vertical flip, row 0 of the decoded picture is at v = 1; the
+	/* the transfer puts row 0 of the decoded picture at v = 1 (the top); the
 	   half-texel inset keeps linear filtering from mixing the two eyes */
 	float half = 0.5f / ts;
 	out->vLeft[0] = 1.0f - eh / ts + half;

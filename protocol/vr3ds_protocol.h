@@ -128,7 +128,7 @@ typedef struct {
 	uint16_t configId;     /* changes every time the stream format changes */
 	uint8_t codec;         /* Vr3dsCodec */
 	uint8_t stereo;
-	uint16_t eyeWidth;     /* eyes are stacked vertically: left on top */
+	uint16_t eyeWidth;     /* eyes are stacked vertically: left on top (see vr3ds_picture_height) */
 	uint16_t eyeHeight;
 	uint8_t fps;
 	uint8_t reserved;
@@ -201,6 +201,13 @@ static inline void vr3ds_header(Vr3dsHeader* h, uint8_t type) {
 	h->version = VR3DS_PROTOCOL_VERSION;
 	h->type = type;
 	h->reserved = 0;
+}
+
+/* Height of the encoded picture. H.264 always has room for both eyes (the
+   lower one stays black in 2D) so that switching 3D on or off never resizes
+   the hardware decoder; JPEG only carries the eyes it shows. */
+static inline int vr3ds_picture_height(uint8_t codec, uint8_t stereo, uint16_t eyeHeight) {
+	return eyeHeight * ((stereo || codec == VR3DS_CODEC_H264) ? 2 : 1);
 }
 
 static inline int vr3ds_check(const void* data, int len, int minLen) {

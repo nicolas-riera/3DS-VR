@@ -15,6 +15,7 @@
 struct OutputFormat {
 	uint16_t eyeWidth = 512, eyeHeight = 256;
 	bool stereo = true; // eyes stacked vertically, left on top
+	uint16_t height = 512; // picture height (vr3ds_picture_height)
 	uint16_t configId = 0;
 };
 
