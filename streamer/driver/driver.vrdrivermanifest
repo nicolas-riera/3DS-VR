@@ -1,0 +1,7 @@
+{
+	"alwaysActivate": false,
+	"name": "3dsvr",
+	"directory": "",
+	"resourceOnly": false,
+	"hmd_presence": ["*.*"]
+}

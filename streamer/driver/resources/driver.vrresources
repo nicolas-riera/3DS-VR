@@ -1,0 +1,85 @@
+{
+	"jsonid": "vrresources",
+	"statusicons": {
+		"HMD": {
+			"Prop_NamedIconPathDeviceOff_String": "{3dsvr}/icons/generic_status_off.png",
+			"Prop_NamedIconPathDeviceSearching_String": "{3dsvr}/icons/generic_status_searching.gif",
+			"Prop_NamedIconPathDeviceSearchingAlert_String": "{3dsvr}/icons/generic_status_searching_alert.gif",
+			"Prop_NamedIconPathDeviceReady_String": "{3dsvr}/icons/generic_status_ready.png",
+			"Prop_NamedIconPathDeviceReadyAlert_String": "{3dsvr}/icons/generic_status_ready_alert.png",
+			"Prop_NamedIconPathDeviceNotReady_String": "{3dsvr}/icons/generic_status_error.png",
+			"Prop_NamedIconPathDeviceStandby_String": "{3dsvr}/icons/generic_status_standby.png",
+			"Prop_NamedIconPathDeviceStandbyAlert_String": "{3dsvr}/icons/generic_status_standby_alert.png",
+			"Prop_NamedIconPathDeviceAlertLow_String": "{3dsvr}/icons/generic_status_ready_low.png"
+		},
+		"3DS VR": {
+			"Alias": "HMD"
+		},
+		"Nintendo 3DS": {
+			"Prop_NamedIconPathDeviceOff_String": "{3dsvr}/icons/3ds_status_off.png",
+			"Prop_NamedIconPathDeviceSearching_String": "{3dsvr}/icons/3ds_status_searching.gif",
+			"Prop_NamedIconPathDeviceSearchingAlert_String": "{3dsvr}/icons/3ds_status_searching_alert.gif",
+			"Prop_NamedIconPathDeviceReady_String": "{3dsvr}/icons/3ds_status_ready.png",
+			"Prop_NamedIconPathDeviceReadyAlert_String": "{3dsvr}/icons/3ds_status_ready_alert.png",
+			"Prop_NamedIconPathDeviceNotReady_String": "{3dsvr}/icons/3ds_status_error.png",
+			"Prop_NamedIconPathDeviceStandby_String": "{3dsvr}/icons/3ds_status_standby.png",
+			"Prop_NamedIconPathDeviceStandbyAlert_String": "{3dsvr}/icons/3ds_status_standby_alert.png",
+			"Prop_NamedIconPathDeviceAlertLow_String": "{3dsvr}/icons/3ds_status_ready_low.png"
+		},
+		"Nintendo 3DS XL": {
+			"Prop_NamedIconPathDeviceOff_String": "{3dsvr}/icons/3dsxl_status_off.png",
+			"Prop_NamedIconPathDeviceSearching_String": "{3dsvr}/icons/3dsxl_status_searching.gif",
+			"Prop_NamedIconPathDeviceSearchingAlert_String": "{3dsvr}/icons/3dsxl_status_searching_alert.gif",
+			"Prop_NamedIconPathDeviceReady_String": "{3dsvr}/icons/3dsxl_status_ready.png",
+			"Prop_NamedIconPathDeviceReadyAlert_String": "{3dsvr}/icons/3dsxl_status_ready_alert.png",
+			"Prop_NamedIconPathDeviceNotReady_String": "{3dsvr}/icons/3dsxl_status_error.png",
+			"Prop_NamedIconPathDeviceStandby_String": "{3dsvr}/icons/3dsxl_status_standby.png",
+			"Prop_NamedIconPathDeviceStandbyAlert_String": "{3dsvr}/icons/3dsxl_status_standby_alert.png",
+			"Prop_NamedIconPathDeviceAlertLow_String": "{3dsvr}/icons/3dsxl_status_ready_low.png"
+		},
+		"New Nintendo 3DS": {
+			"Prop_NamedIconPathDeviceOff_String": "{3dsvr}/icons/new3ds_status_off.png",
+			"Prop_NamedIconPathDeviceSearching_String": "{3dsvr}/icons/new3ds_status_searching.gif",
+			"Prop_NamedIconPathDeviceSearchingAlert_String": "{3dsvr}/icons/new3ds_status_searching_alert.gif",
+			"Prop_NamedIconPathDeviceReady_String": "{3dsvr}/icons/new3ds_status_ready.png",
+			"Prop_NamedIconPathDeviceReadyAlert_String": "{3dsvr}/icons/new3ds_status_ready_alert.png",
+			"Prop_NamedIconPathDeviceNotReady_String": "{3dsvr}/icons/new3ds_status_error.png",
+			"Prop_NamedIconPathDeviceStandby_String": "{3dsvr}/icons/new3ds_status_standby.png",
+			"Prop_NamedIconPathDeviceStandbyAlert_String": "{3dsvr}/icons/new3ds_status_standby_alert.png",
+			"Prop_NamedIconPathDeviceAlertLow_String": "{3dsvr}/icons/new3ds_status_ready_low.png"
+		},
+		"Nintendo 2DS": {
+			"Prop_NamedIconPathDeviceOff_String": "{3dsvr}/icons/2ds_status_off.png",
+			"Prop_NamedIconPathDeviceSearching_String": "{3dsvr}/icons/2ds_status_searching.gif",
+			"Prop_NamedIconPathDeviceSearchingAlert_String": "{3dsvr}/icons/2ds_status_searching_alert.gif",
+			"Prop_NamedIconPathDeviceReady_String": "{3dsvr}/icons/2ds_status_ready.png",
+			"Prop_NamedIconPathDeviceReadyAlert_String": "{3dsvr}/icons/2ds_status_ready_alert.png",
+			"Prop_NamedIconPathDeviceNotReady_String": "{3dsvr}/icons/2ds_status_error.png",
+			"Prop_NamedIconPathDeviceStandby_String": "{3dsvr}/icons/2ds_status_standby.png",
+			"Prop_NamedIconPathDeviceStandbyAlert_String": "{3dsvr}/icons/2ds_status_standby_alert.png",
+			"Prop_NamedIconPathDeviceAlertLow_String": "{3dsvr}/icons/2ds_status_ready_low.png"
+		},
+		"New Nintendo 3DS XL": {
+			"Prop_NamedIconPathDeviceOff_String": "{3dsvr}/icons/new3dsxl_status_off.png",
+			"Prop_NamedIconPathDeviceSearching_String": "{3dsvr}/icons/new3dsxl_status_searching.gif",
+			"Prop_NamedIconPathDeviceSearchingAlert_String": "{3dsvr}/icons/new3dsxl_status_searching_alert.gif",
+			"Prop_NamedIconPathDeviceReady_String": "{3dsvr}/icons/new3dsxl_status_ready.png",
+			"Prop_NamedIconPathDeviceReadyAlert_String": "{3dsvr}/icons/new3dsxl_status_ready_alert.png",
+			"Prop_NamedIconPathDeviceNotReady_String": "{3dsvr}/icons/new3dsxl_status_error.png",
+			"Prop_NamedIconPathDeviceStandby_String": "{3dsvr}/icons/new3dsxl_status_standby.png",
+			"Prop_NamedIconPathDeviceStandbyAlert_String": "{3dsvr}/icons/new3dsxl_status_standby_alert.png",
+			"Prop_NamedIconPathDeviceAlertLow_String": "{3dsvr}/icons/new3dsxl_status_ready_low.png"
+		},
+		"New Nintendo 2DS XL": {
+			"Prop_NamedIconPathDeviceOff_String": "{3dsvr}/icons/new2dsxl_status_off.png",
+			"Prop_NamedIconPathDeviceSearching_String": "{3dsvr}/icons/new2dsxl_status_searching.gif",
+			"Prop_NamedIconPathDeviceSearchingAlert_String": "{3dsvr}/icons/new2dsxl_status_searching_alert.gif",
+			"Prop_NamedIconPathDeviceReady_String": "{3dsvr}/icons/new2dsxl_status_ready.png",
+			"Prop_NamedIconPathDeviceReadyAlert_String": "{3dsvr}/icons/new2dsxl_status_ready_alert.png",
+			"Prop_NamedIconPathDeviceNotReady_String": "{3dsvr}/icons/new2dsxl_status_error.png",
+			"Prop_NamedIconPathDeviceStandby_String": "{3dsvr}/icons/new2dsxl_status_standby.png",
+			"Prop_NamedIconPathDeviceStandbyAlert_String": "{3dsvr}/icons/new2dsxl_status_standby_alert.png",
+			"Prop_NamedIconPathDeviceAlertLow_String": "{3dsvr}/icons/new2dsxl_status_ready_low.png"
+		}
+	}
+}

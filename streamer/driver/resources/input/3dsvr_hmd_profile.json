@@ -1,0 +1,17 @@
+{
+	"jsonid": "input_profile",
+	"controller_type": "3dsvr_hmd",
+	"device_class": "TrackedDeviceClass_HMD",
+	"resource_root": "3dsvr",
+	"driver_name": "3dsvr",
+	"input_bindingui_mode": "hmd",
+	"should_show_binding_errors": false,
+	"input_source": {
+		"/input/system": {
+			"type": "button",
+			"click": true,
+			"touch": false
+		}
+	},
+	"default_bindings": []
+}

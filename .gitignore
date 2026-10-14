@@ -1,0 +1,6 @@
+console/build/
+console/dist/
+streamer/build/
+__pycache__/
+*.pyc
+.vs/

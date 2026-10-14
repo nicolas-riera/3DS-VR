@@ -1,0 +1,5 @@
+newmtl console
+Ka 1 1 1
+Kd 1 1 1
+Ks 0 0 0
+map_Kd 3dsvr_new3dsxl_diffuse.png

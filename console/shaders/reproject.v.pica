@@ -1,0 +1,26 @@
+; Reprojection vertex shader: the video frame is a quad on the plane z = -1
+; of the head pose it was rendered with; `mvp` moves it into the current
+; head pose and projects it onto the (rotated) top screen.
+
+.fvec mvp[4]
+
+.constf ones(1.0, 1.0, 1.0, 1.0)
+
+.out outpos position
+.out outtc0 texcoord0
+
+.alias inpos v0
+.alias intex v1
+
+.proc main
+	mov r0.xyz, inpos
+	mov r0.w, ones
+
+	dp4 outpos.x, mvp[0], r0
+	dp4 outpos.y, mvp[1], r0
+	dp4 outpos.z, mvp[2], r0
+	dp4 outpos.w, mvp[3], r0
+
+	mov outtc0, intex
+	end
+.end
