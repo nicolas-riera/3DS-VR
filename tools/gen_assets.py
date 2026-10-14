@@ -274,10 +274,10 @@ BADGE_R = 11.5  # radius in SteamVR's 2x headset icons
 BADGE_GAP = 2.6
 
 
-def badge_pos(m):
-    """Badge centre: over the bottom-right corner of the console, as SteamVR does."""
-    _, _, _, (x0, y0, x1, y1) = console_parts(m)
-    return (min(x1 - 1.0, 100 - BADGE_R - 1), y1 - BADGE_R + 1.5, BADGE_R)
+def badge_pos(bounds, width=100):
+    """Badge centre: over the bottom-right corner of the device, as SteamVR does."""
+    x0, y0, x1, y1 = bounds
+    return (min(x1 - 1.0, width - BADGE_R - 1), y1 - BADGE_R + 1.5, BADGE_R)
 
 
 def console_parts(m, cx=50.0, top=2.0, height=60.0):
@@ -326,6 +326,18 @@ def console_parts(m, cx=50.0, top=2.0, height=60.0):
     return body, [top_screen, bottom_screen, split, pad, abxy], body, (x0, top, x1, top + height)
 
 
+def controls_parts():
+    """The console's controls (its lower half, seen from above) for the
+    SteamVR controller icon, in a 64 x 64 box. Same return value as console_parts."""
+    x0, y0, x1, y1 = 3.0, 15.0, 61.0, 51.0
+    body = sd_round_rect(x0, y0, x1, y1, 7.0)
+    screen = sd_round_rect(23.5, 19.5, 40.5, 40.5, 1.2)
+    pad = sd_circle(13.0, 25.0, 5.2)
+    dpad = union(sd_round_rect(8.6, 39.4, 17.4, 41.6, 0.6), sd_round_rect(11.9, 36.1, 14.1, 44.9, 0.6))
+    abxy = union(*(sd_circle(51.0 + dx * 4.4, 28.0 + dy * 4.4, 2.1) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))))
+    return body, [screen, pad, dpad, abxy], body, (x0, y0, x1, y1)
+
+
 GREEN = hexc("85b717")
 GREEN_DARK = hexc("3c4a24")
 GREY = hexc("49494f")
@@ -351,11 +363,12 @@ def badge_shape(kind, pos):
     raise ValueError(kind)
 
 
-def status_icon(m, state, scale, fill=None):
-    """state: off, ready, standby, error, ready_alert, standby_alert, ready_low, searching."""
-    img = Image(int(100 * scale), int(64 * scale), scale)
-    body, cuts, frame, _ = console_parts(m)
-    pos = badge_pos(m)
+def status_icon(m, state, scale, fill=None, parts=None, width=100):
+    """state: off, ready, standby, error, ready_alert, standby_alert, ready_low, searching.
+    `parts` replaces the console (see controls_parts), drawn `width` units wide."""
+    img = Image(int(width * scale), int(64 * scale), scale)
+    body, cuts, frame, bounds = parts or console_parts(m)
+    pos = badge_pos(bounds, width)
     badge = {"ready_alert": "info", "standby_alert": "info", "searching_alert": "info", "error": "error",
              "ready_low": "low"}.get(state)
     color = fill or (GREY if state == "off" else GREEN)
@@ -389,15 +402,19 @@ ICON_STATES = ("off", "ready", "ready_alert", "standby", "standby_alert", "error
 def make_status_icons():
     out = os.path.join(DRIVER_RES, "icons")
     os.makedirs(out, exist_ok=True)
-    for slug, m in list(MODELS.items()) + [("generic", GENERIC)]:
+    # headset icons are 100 x 64 (50 x 32 at 1x), controller icons 64 x 64
+    sets = [(slug, m, None, 100) for slug, m in list(MODELS.items()) + [("generic", GENERIC)]]
+    sets.append(("controls", GENERIC, controls_parts(), 64))
+    for slug, m, parts, width in sets:
         for scale, suffix in ((0.5, ""), (1.0, "_2x")):
             for state in ICON_STATES:
-                status_icon(m, state, scale).save_png(os.path.join(out, "%s_status_%s%s.png" % (slug, state, suffix)))
+                status_icon(m, state, scale, parts=parts, width=width).save_png(
+                    os.path.join(out, "%s_status_%s%s.png" % (slug, state, suffix)))
             # searching: SteamVR's linear pulse to dark green and back, 29 frames
             for state in ("searching", "searching_alert"):
                 # one coverage mask, recoloured per frame
                 img = status_icon(m, "ready_alert" if state == "searching_alert" else "ready", scale,
-                                  fill=(1.0, 1.0, 1.0, 1.0))
+                                  fill=(1.0, 1.0, 1.0, 1.0), parts=parts, width=width)
                 mask = [p[3] for p in img.px]
                 frames = []
                 for k in range(29):
@@ -406,6 +423,14 @@ def make_status_icons():
                     frames.append([rgb8 + (int(round(a * 255)),) for a in mask])
                 with open(os.path.join(out, "%s_status_%s%s.gif" % (slug, state, suffix)), "wb") as f:
                     f.write(encode_gif(img.w, img.h, frames))
+
+
+def make_controls_binding_image():
+    """The picture of SteamVR's binding screen for the console's controls (256 x 256)."""
+    img = Image(256, 256, 4.0)
+    body, cuts, _, _ = controls_parts()
+    img.paint(subtract(body, *cuts), hexc("c8ccd6"))
+    img.save_png(os.path.join(DRIVER_RES, "icons", "controls_binding.png"))
 
 
 def make_vrresources():
@@ -423,7 +448,7 @@ def make_vrresources():
             "Prop_NamedIconPathDeviceStandbyAlert_String": p + "standby_alert.png",
             "Prop_NamedIconPathDeviceAlertLow_String": p + "ready_low.png",
         }
-    icons = {"HMD": entry("generic"), "3DS VR": {"Alias": "HMD"}}
+    icons = {"HMD": entry("generic"), "3DS VR": {"Alias": "HMD"}, "3DS VR Controls": entry("controls")}
     for slug, m in MODELS.items():
         icons[m["name"]] = entry(slug)
     with open(os.path.join(DRIVER_RES, "driver.vrresources"), "w", newline="\n") as f:
@@ -749,6 +774,7 @@ if __name__ == "__main__":
     make_jingle()
     make_app_ico()
     make_status_icons()
+    make_controls_binding_image()
     make_vrresources()
     make_render_models()
     print("assets written under", ROOT)

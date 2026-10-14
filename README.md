@@ -31,7 +31,8 @@ you want it. Its gyroscope tracks your head (3DoF), and its buttons are your Xbo
   [SlimeVR 3DS](https://github.com/nicolas-riera/SlimeVR-3DS)), with a recenter button.
 - **PC sound on the console** (speakers or headphones). There is no microphone and no virtual audio cable.
 - **Xbox 360 controller.** All of the console's buttons, sticks and triggers. On the Old 3DS family the touch
-  screen adds a right stick and ZL/ZR. On every model the touch screen has L3, R3 and the Xbox Guide button.
+  screen adds a right stick and ZL/ZR. On every model the touch screen has L3, R3 and the Guide button.
+- **SteamVR menu with the console.** Guide opens SteamVR's dashboard; aim with your head and click with A.
 - **Model and battery passthrough.** SteamVR shows your exact console model and its status icons, and the
   console's battery level.
 - **No configuration.** Run the app on the PC and the app on the 3DS, check the pairing code once, play.
@@ -71,9 +72,9 @@ with FBI to get a HOME Menu icon.
    installed, it works with that instead and there is nothing to install,
 4. starts SteamVR.
 
-The driver only activates while the app is running. Without the app, SteamVR behaves as if 3DS VR was not installed
-and your other headsets work as usual. If SteamVR was already running when you opened the app, click
-**Restart SteamVR**.
+The app registers the driver with SteamVR when it starts and removes it when it closes, so without the app SteamVR
+behaves as if 3DS VR was not installed and your other headsets work as usual. If SteamVR was already running when
+you opened the app, click **Restart SteamVR**.
 
 ## Use
 
@@ -95,9 +96,14 @@ and your other headsets work as usual. If SteamVR was already running when you o
 | C-Stick (New 3DS family) | right stick |
 | D-Pad | D-Pad |
 | START / SELECT | Start / Back |
-| touch screen: L3, R3, Guide | L3, R3, Guide (Guide opens the SteamVR dashboard) |
+| touch screen: L3, R3 | L3, R3 |
+| touch screen: Guide | opens or closes SteamVR's dashboard (not sent to the game) |
 | touch screen, Old 3DS family: stick, ZL, ZR | right stick, LT, RT |
 | SELECT + START, or touch screen: Recenter | recenter the view (not sent to the game) |
+
+**In SteamVR's dashboard** the pointer follows your head. A or ZR clicks, ZL right-clicks, B goes back, the D-Pad
+moves between items and the C-Stick (or the touch-screen stick) scrolls. Holding SELECT also opens the dashboard.
+While it is open, the game gets no input from the console.
 
 ### Console settings
 
@@ -133,7 +139,9 @@ Settings are saved in `sdmc:/3ds/3DS-VR/settings.ini`.
 - **Audio.** The default output device is captured with WASAPI loopback, resampled to 32 kHz and encoded to
   IMA-ADPCM (256 kbit/s).
 - **Gamepad.** A virtual Xbox 360 controller is plugged in while a console is connected, through the 3DS VR
-  gamepad driver (below), or through ViGEmBus when only that is installed.
+  gamepad driver (below), or through ViGEmBus when only that is installed. The SteamVR driver also adds the
+  console's buttons as a SteamVR device of the `gamepad` type, which SteamVR's dashboard knows how to use: it aims
+  with the head. Its bindings are in `resources/input/`.
 - **Model and battery.** The console's model becomes the headset's model number, which selects that console's
   render model and status icons. The icons follow SteamVR's own style (see `driver.vrresources`). The battery
   level is reported as the headset's battery.

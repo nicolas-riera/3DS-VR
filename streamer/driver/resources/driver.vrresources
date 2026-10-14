@@ -15,6 +15,17 @@
 		"3DS VR": {
 			"Alias": "HMD"
 		},
+		"3DS VR Controls": {
+			"Prop_NamedIconPathDeviceOff_String": "{3dsvr}/icons/controls_status_off.png",
+			"Prop_NamedIconPathDeviceSearching_String": "{3dsvr}/icons/controls_status_searching.gif",
+			"Prop_NamedIconPathDeviceSearchingAlert_String": "{3dsvr}/icons/controls_status_searching_alert.gif",
+			"Prop_NamedIconPathDeviceReady_String": "{3dsvr}/icons/controls_status_ready.png",
+			"Prop_NamedIconPathDeviceReadyAlert_String": "{3dsvr}/icons/controls_status_ready_alert.png",
+			"Prop_NamedIconPathDeviceNotReady_String": "{3dsvr}/icons/controls_status_error.png",
+			"Prop_NamedIconPathDeviceStandby_String": "{3dsvr}/icons/controls_status_standby.png",
+			"Prop_NamedIconPathDeviceStandbyAlert_String": "{3dsvr}/icons/controls_status_standby_alert.png",
+			"Prop_NamedIconPathDeviceAlertLow_String": "{3dsvr}/icons/controls_status_ready_low.png"
+		},
 		"Nintendo 3DS": {
 			"Prop_NamedIconPathDeviceOff_String": "{3dsvr}/icons/3ds_status_off.png",
 			"Prop_NamedIconPathDeviceSearching_String": "{3dsvr}/icons/3ds_status_searching.gif",

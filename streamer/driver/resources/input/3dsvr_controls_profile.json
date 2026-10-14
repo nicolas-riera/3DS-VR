@@ -1,0 +1,173 @@
+{
+	"jsonid": "input_profile",
+	"controller_type": "gamepad",
+	"device_class": "TrackedDeviceClass_Controller",
+	"resource_root": "3dsvr",
+	"driver_name": "3dsvr",
+	"input_bindingui_mode": "single_device",
+	"input_bindingui_right": {
+		"image": "{3dsvr}/icons/controls_binding.png"
+	},
+	"should_show_binding_errors": false,
+	"input_source": {
+		"/input/a": {
+			"type": "button",
+			"binding_image_point": [
+				222,
+				112
+			],
+			"order": 1,
+			"click": true
+		},
+		"/input/b": {
+			"type": "button",
+			"binding_image_point": [
+				204,
+				130
+			],
+			"order": 2,
+			"click": true
+		},
+		"/input/x": {
+			"type": "button",
+			"binding_image_point": [
+				204,
+				94
+			],
+			"order": 3,
+			"click": true
+		},
+		"/input/y": {
+			"type": "button",
+			"binding_image_point": [
+				186,
+				112
+			],
+			"order": 4,
+			"click": true
+		},
+		"/input/joystick_left": {
+			"type": "joystick",
+			"binding_image_point": [
+				52,
+				100
+			],
+			"order": 5,
+			"click": true
+		},
+		"/input/joystick_right": {
+			"type": "joystick",
+			"binding_image_point": [
+				204,
+				70
+			],
+			"order": 6,
+			"click": true
+		},
+		"/input/trigger_left": {
+			"type": "trigger",
+			"binding_image_point": [
+				76,
+				60
+			],
+			"order": 7,
+			"value": true
+		},
+		"/input/trigger_right": {
+			"type": "trigger",
+			"binding_image_point": [
+				180,
+				60
+			],
+			"order": 8,
+			"value": true
+		},
+		"/input/shoulder_left": {
+			"type": "button",
+			"binding_image_point": [
+				32,
+				60
+			],
+			"order": 9,
+			"click": true
+		},
+		"/input/shoulder_right": {
+			"type": "button",
+			"binding_image_point": [
+				224,
+				60
+			],
+			"order": 10,
+			"click": true
+		},
+		"/input/dpad_up": {
+			"type": "button",
+			"binding_image_point": [
+				52,
+				148
+			],
+			"order": 11,
+			"click": true
+		},
+		"/input/dpad_down": {
+			"type": "button",
+			"binding_image_point": [
+				52,
+				172
+			],
+			"order": 12,
+			"click": true
+		},
+		"/input/dpad_left": {
+			"type": "button",
+			"binding_image_point": [
+				40,
+				160
+			],
+			"order": 13,
+			"click": true
+		},
+		"/input/dpad_right": {
+			"type": "button",
+			"binding_image_point": [
+				64,
+				160
+			],
+			"order": 14,
+			"click": true
+		},
+		"/input/start": {
+			"type": "button",
+			"binding_image_point": [
+				200,
+				188
+			],
+			"order": 15,
+			"click": true
+		},
+		"/input/back": {
+			"type": "button",
+			"binding_image_point": [
+				170,
+				188
+			],
+			"order": 16,
+			"click": true
+		},
+		"/input/guide": {
+			"type": "button",
+			"binding_image_point": [
+				128,
+				120
+			],
+			"order": 17,
+			"click": true
+		}
+	},
+	"default_bindings": [
+		{
+			"app_key": "openvr.component.vrcompositor",
+			"binding_url": "3dsvr_controls_vrcompositor.json"
+		}
+	]
+}

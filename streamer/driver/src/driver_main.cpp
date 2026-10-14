@@ -8,6 +8,7 @@
 #include <openvr_driver.h>
 
 #include "compositor.h"
+#include "controls.h"
 #include "hmd.h"
 #include "ipc.h"
 #include "log.h"
@@ -36,11 +37,17 @@ public:
 		if (!m_compositor->Init()) return Fail("No usable Direct3D 11 GPU");
 		m_streamer = std::make_unique<Streamer>();
 		m_hmd = std::make_unique<Hmd>(m_compositor.get(), m_streamer.get());
+		m_controls = std::make_unique<Controls>();
 		Hmd* hmd = m_hmd.get();
-		if (!m_streamer->Start(m_compositor.get(), [hmd](const Quat& q) { hmd->OnTracking(q); }))
+		Controls* controls = m_controls.get();
+		if (!m_streamer->Start(
+				m_compositor.get(), [hmd](const Quat& q) { hmd->OnTracking(q); },
+				[controls](const Vr3dsGamepad& pad, bool connected) { controls->Update(pad, connected); }))
 			return Fail("Network unavailable");
 		if (!VRServerDriverHost()->TrackedDeviceAdded("3DSVR-HMD", TrackedDeviceClass_HMD, m_hmd.get()))
 			return Fail("SteamVR refused the headset");
+		if (!VRServerDriverHost()->TrackedDeviceAdded("3DSVR-CONTROLS", TrackedDeviceClass_Controller, controls))
+			Log("SteamVR refused the console controls");
 		Log("3DS VR driver ready");
 		return VRInitError_None;
 	}
@@ -51,7 +58,14 @@ public:
 	}
 
 	const char* const* GetInterfaceVersions() override { return k_InterfaceVersions; }
-	void RunFrame() override {}
+	void RunFrame() override {
+		VREvent_t e;
+		while (VRServerDriverHost()->PollNextEvent(&e, sizeof(e))) {
+			if (!m_streamer) continue;
+			if (e.eventType == VREvent_DashboardActivated) m_streamer->SetDashboardOpen(true);
+			else if (e.eventType == VREvent_DashboardDeactivated) m_streamer->SetDashboardOpen(false);
+		}
+	}
 	bool ShouldBlockStandbyMode() override { return false; }
 	void EnterStandby() override {}
 	void LeaveStandby() override {}
@@ -73,6 +87,7 @@ private:
 		m_streamer.release();
 		m_compositor.release();
 		m_hmd.release();
+		m_controls.release();
 		if (m_timerPeriod) timeEndPeriod(1);
 		m_timerPeriod = false;
 	}
@@ -81,6 +96,7 @@ private:
 	std::unique_ptr<Compositor> m_compositor;
 	std::unique_ptr<Streamer> m_streamer;
 	std::unique_ptr<Hmd> m_hmd;
+	std::unique_ptr<Controls> m_controls;
 };
 
 static ServerProvider g_provider;

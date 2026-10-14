@@ -38,9 +38,13 @@ struct SessionView {
 class Streamer {
 public:
 	using PoseCallback = std::function<void(const Quat& q)>;
+	// the console's buttons for SteamVR; connected = false when the session ends
+	using PadCallback = std::function<void(const Vr3dsGamepad& pad, bool connected)>;
 
-	bool Start(Compositor* compositor, PoseCallback onPose);
+	bool Start(Compositor* compositor, PoseCallback onPose, PadCallback onPad);
 	void Stop();
+	// While SteamVR's dashboard is open the buttons drive it, not the game.
+	void SetDashboardOpen(bool open) { m_dashboardOpen = open; }
 
 	SessionView View();
 	OutputFormat Format();
@@ -95,6 +99,8 @@ private:
 
 	Compositor* m_compositor = nullptr;
 	PoseCallback m_onPose;
+	PadCallback m_onPad;
+	std::atomic<bool> m_dashboardOpen{false};
 	std::atomic<bool> m_running{false};
 	std::thread m_netThread, m_encodeThread;
 	SOCKET m_sock = INVALID_SOCKET;

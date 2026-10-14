@@ -54,9 +54,10 @@ static bool SameHost(const sockaddr_in& a, const sockaddr_in& b) {
 
 // ------------------------------------------------------------------ setup
 
-bool Streamer::Start(Compositor* compositor, PoseCallback onPose) {
+bool Streamer::Start(Compositor* compositor, PoseCallback onPose, PadCallback onPad) {
 	m_compositor = compositor;
 	m_onPose = std::move(onPose);
+	m_onPad = std::move(onPad);
 
 	WSADATA wsa;
 	WSAStartup(MAKEWORD(2, 2), &wsa);
@@ -278,6 +279,7 @@ void Streamer::EndSession(const char* reason) {
 	Log("Session ended: %s", reason);
 	m_audio.Stop();
 	m_gamepad.Disconnect();
+	if (m_onPad) m_onPad(Vr3dsGamepad{}, false);
 }
 
 void Streamer::OnHello(const Vr3dsHello& h, const sockaddr_in& from) {
@@ -362,7 +364,14 @@ void Streamer::OnPacket(const uint8_t* data, int len, const sockaddr_in& from) {
 			if (m_poses.size() > 128) m_poses.pop_front();
 		}
 		if (m_onPose) m_onPose(q);
-		m_gamepad.Update(t->pad);
+		if (m_onPad) m_onPad(t->pad, true);
+		{
+			// Guide opens SteamVR's dashboard (on Windows the Xbox button opens the Game Bar)
+			Vr3dsGamepad xpad = t->pad;
+			if (m_dashboardOpen) memset(&xpad, 0, sizeof(xpad));
+			xpad.buttons &= (uint16_t)~VR3DS_BTN_GUIDE;
+			m_gamepad.Update(xpad);
+		}
 		break;
 	}
 
